@@ -1,0 +1,337 @@
+Using device: cuda
+Starting training for 50 epochs...
+
+Epoch 1/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training:  50%|█████     | 1/2 [00:00<00:00,  6.03it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 11.03it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 106.43it/s]
+Train - Bipartite: 31.6366, Spectrum: 0.4964
+Val   - Bipartite: 30.1361, Spectrum: 0.3523
+New best validation loss: 30.1714. Saving model...
+
+Epoch 2/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 74.39it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 101.05it/s]
+Train - Bipartite: 29.6070, Spectrum: 0.2430
+Val   - Bipartite: 28.1790, Spectrum: 0.1220
+New best validation loss: 28.1912. Saving model...
+
+Epoch 3/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 74.31it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 100.66it/s]
+Train - Bipartite: 27.8815, Spectrum: 0.1139
+Val   - Bipartite: 25.7467, Spectrum: 0.0482
+New best validation loss: 25.7515. Saving model...
+
+Epoch 4/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 72.95it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 100.19it/s]
+Train - Bipartite: 25.4118, Spectrum: 0.0548
+Val   - Bipartite: 23.4856, Spectrum: 0.0602
+New best validation loss: 23.4916. Saving model...
+
+Epoch 5/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.85it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 103.75it/s]
+Train - Bipartite: 22.6901, Spectrum: 0.0730
+Val   - Bipartite: 20.2477, Spectrum: 0.0792
+New best validation loss: 20.2556. Saving model...
+
+Epoch 6/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 74.00it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 102.06it/s]
+Train - Bipartite: 19.8382, Spectrum: 0.0697
+Val   - Bipartite: 16.1370, Spectrum: 0.0763
+New best validation loss: 16.1446. Saving model...
+
+Epoch 7/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 71.93it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 99.98it/s]
+Train - Bipartite: 15.4904, Spectrum: 0.0713
+Val   - Bipartite: 11.9492, Spectrum: 0.0632
+New best validation loss: 11.9555. Saving model...
+
+Epoch 8/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.37it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 106.83it/s]
+Train - Bipartite: 10.5047, Spectrum: 0.0663
+Val   - Bipartite: 6.4663, Spectrum: 0.0599
+New best validation loss: 6.4723. Saving model...
+
+Epoch 9/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 68.44it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 100.96it/s]
+Train - Bipartite: 5.5542, Spectrum: 0.0568
+Val   - Bipartite: 2.4858, Spectrum: 0.0405
+New best validation loss: 2.4898. Saving model...
+
+Epoch 10/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 71.97it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 106.26it/s]
+Train - Bipartite: 1.9487, Spectrum: 0.0404
+Val   - Bipartite: 1.7481, Spectrum: 0.0364
+New best validation loss: 1.7517. Saving model...
+
+Epoch 11/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 74.54it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 105.84it/s]
+Train - Bipartite: 1.5856, Spectrum: 0.0390
+Val   - Bipartite: 2.0962, Spectrum: 0.0525
+
+Epoch 12/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 78.20it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 107.27it/s]
+Train - Bipartite: 3.3252, Spectrum: 0.0615
+Val   - Bipartite: 3.8751, Spectrum: 0.0543
+
+Epoch 13/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 77.00it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 108.06it/s]
+Train - Bipartite: 3.8318, Spectrum: 0.0530
+Val   - Bipartite: 2.9879, Spectrum: 0.0329
+
+Epoch 14/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 75.41it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 107.96it/s]
+Train - Bipartite: 2.4150, Spectrum: 0.0316
+Val   - Bipartite: 1.4954, Spectrum: 0.0266
+New best validation loss: 1.4981. Saving model...
+
+Epoch 15/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.00it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 104.18it/s]
+Train - Bipartite: 1.1152, Spectrum: 0.0248
+Val   - Bipartite: 0.7242, Spectrum: 0.0218
+New best validation loss: 0.7263. Saving model...
+
+Epoch 16/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 72.29it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 101.05it/s]
+Train - Bipartite: 0.7491, Spectrum: 0.0218
+Val   - Bipartite: 0.6765, Spectrum: 0.0208
+New best validation loss: 0.6786. Saving model...
+
+Epoch 17/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 71.30it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 102.46it/s]
+Train - Bipartite: 0.6675, Spectrum: 0.0217
+Val   - Bipartite: 0.7728, Spectrum: 0.0175
+
+Epoch 18/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 75.33it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 102.94it/s]
+Train - Bipartite: 0.8037, Spectrum: 0.0170
+Val   - Bipartite: 0.8020, Spectrum: 0.0116
+
+Epoch 19/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 77.96it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 104.71it/s]
+Train - Bipartite: 0.8525, Spectrum: 0.0116
+Val   - Bipartite: 0.8174, Spectrum: 0.0103
+
+Epoch 20/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 78.25it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 103.16it/s]
+Train - Bipartite: 0.8041, Spectrum: 0.0101
+Val   - Bipartite: 0.8060, Spectrum: 0.0090
+
+Epoch 21/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 74.43it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 100.52it/s]
+Train - Bipartite: 0.9436, Spectrum: 0.0092
+Val   - Bipartite: 0.8846, Spectrum: 0.0079
+
+Epoch 22/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 77.01it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 107.89it/s]
+Train - Bipartite: 0.8821, Spectrum: 0.0084
+Val   - Bipartite: 0.8406, Spectrum: 0.0072
+
+Epoch 23/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 75.61it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 108.19it/s]
+Train - Bipartite: 0.8384, Spectrum: 0.0072
+Val   - Bipartite: 0.7715, Spectrum: 0.0053
+
+Epoch 24/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 78.82it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 106.29it/s]
+Train - Bipartite: 0.7519, Spectrum: 0.0049
+Val   - Bipartite: 0.7264, Spectrum: 0.0048
+
+Epoch 25/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 75.16it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 104.04it/s]
+Train - Bipartite: 0.7179, Spectrum: 0.0047
+Val   - Bipartite: 0.6637, Spectrum: 0.0036
+New best validation loss: 0.6641. Saving model...
+
+Epoch 26/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.82it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 105.44it/s]
+Train - Bipartite: 0.6354, Spectrum: 0.0037
+Val   - Bipartite: 0.5779, Spectrum: 0.0035
+New best validation loss: 0.5782. Saving model...
+
+Epoch 27/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.43it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 103.47it/s]
+Train - Bipartite: 0.5825, Spectrum: 0.0035
+Val   - Bipartite: 0.5360, Spectrum: 0.0030
+New best validation loss: 0.5363. Saving model...
+
+Epoch 28/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 74.83it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 104.91it/s]
+Train - Bipartite: 0.5297, Spectrum: 0.0031
+Val   - Bipartite: 0.5019, Spectrum: 0.0028
+New best validation loss: 0.5022. Saving model...
+
+Epoch 29/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.69it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 108.07it/s]
+Train - Bipartite: 0.5118, Spectrum: 0.0027
+Val   - Bipartite: 0.4602, Spectrum: 0.0023
+New best validation loss: 0.4604. Saving model...
+
+Epoch 30/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.44it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 106.24it/s]
+Train - Bipartite: 0.4463, Spectrum: 0.0024
+Val   - Bipartite: 0.4293, Spectrum: 0.0022
+New best validation loss: 0.4295. Saving model...
+
+Epoch 31/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.20it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 98.45it/s]
+Train - Bipartite: 0.4382, Spectrum: 0.0021
+Val   - Bipartite: 0.4124, Spectrum: 0.0020
+New best validation loss: 0.4126. Saving model...
+
+Epoch 32/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 71.81it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 99.04it/s]
+Train - Bipartite: 0.3950, Spectrum: 0.0019
+Val   - Bipartite: 0.3911, Spectrum: 0.0016
+New best validation loss: 0.3913. Saving model...
+
+Epoch 33/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.04it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 97.20it/s]
+Train - Bipartite: 0.3887, Spectrum: 0.0015
+Val   - Bipartite: 0.3634, Spectrum: 0.0014
+New best validation loss: 0.3636. Saving model...
+
+Epoch 34/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.00it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 100.80it/s]
+Train - Bipartite: 0.3604, Spectrum: 0.0014
+Val   - Bipartite: 0.3589, Spectrum: 0.0012
+New best validation loss: 0.3590. Saving model...
+
+Epoch 35/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 72.90it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 101.49it/s]
+Train - Bipartite: 0.3589, Spectrum: 0.0012
+Val   - Bipartite: 0.3392, Spectrum: 0.0012
+New best validation loss: 0.3394. Saving model...
+
+Epoch 36/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 71.69it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 99.99it/s]
+Train - Bipartite: 0.3400, Spectrum: 0.0013
+Val   - Bipartite: 0.3336, Spectrum: 0.0012
+New best validation loss: 0.3337. Saving model...
+
+Epoch 37/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 72.61it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 99.98it/s]
+Train - Bipartite: 0.3583, Spectrum: 0.0013
+Val   - Bipartite: 0.3534, Spectrum: 0.0010
+
+Epoch 38/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 74.44it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 100.79it/s]
+Train - Bipartite: 0.3520, Spectrum: 0.0011
+Val   - Bipartite: 0.3314, Spectrum: 0.0009
+New best validation loss: 0.3315. Saving model...
+
+Epoch 39/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.68it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 99.89it/s]
+Train - Bipartite: 0.3304, Spectrum: 0.0009
+Val   - Bipartite: 0.3170, Spectrum: 0.0008
+New best validation loss: 0.3170. Saving model...
+
+Epoch 40/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 73.29it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 100.06it/s]
+Train - Bipartite: 0.3123, Spectrum: 0.0008
+Val   - Bipartite: 0.3021, Spectrum: 0.0008
+New best validation loss: 0.3021. Saving model...
+
+Epoch 41/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 72.67it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 101.12it/s]
+Train - Bipartite: 0.3021, Spectrum: 0.0007
+Val   - Bipartite: 0.2921, Spectrum: 0.0006
+New best validation loss: 0.2922. Saving model...
+
+Epoch 42/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 71.28it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 93.51it/s]
+Train - Bipartite: 0.2930, Spectrum: 0.0006
+Val   - Bipartite: 0.2847, Spectrum: 0.0005
+New best validation loss: 0.2848. Saving model...
+
+Epoch 43/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 65.46it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 81.80it/s]
+Train - Bipartite: 0.2848, Spectrum: 0.0005
+Val   - Bipartite: 0.2769, Spectrum: 0.0005
+New best validation loss: 0.2770. Saving model...
+
+Epoch 44/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 68.39it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 97.88it/s]
+Train - Bipartite: 0.2768, Spectrum: 0.0005
+Val   - Bipartite: 0.2669, Spectrum: 0.0004
+New best validation loss: 0.2670. Saving model...
+
+Epoch 45/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 70.68it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 100.27it/s]
+Train - Bipartite: 0.2646, Spectrum: 0.0005
+Val   - Bipartite: 0.2579, Spectrum: 0.0004
+New best validation loss: 0.2579. Saving model...
+
+Epoch 46/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 70.38it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 101.03it/s]
+Train - Bipartite: 0.2591, Spectrum: 0.0004
+Val   - Bipartite: 0.2779, Spectrum: 0.0003
+
+Epoch 47/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 71.94it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 99.93it/s]
+Train - Bipartite: 0.2768, Spectrum: 0.0003
+Val   - Bipartite: 0.2715, Spectrum: 0.0003
+
+Epoch 48/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 71.72it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 97.41it/s]
+Train - Bipartite: 0.2708, Spectrum: 0.0004
+Val   - Bipartite: 0.2655, Spectrum: 0.0003
+
+Epoch 49/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 72.64it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 97.15it/s]
+Train - Bipartite: 0.2643, Spectrum: 0.0003
+Val   - Bipartite: 0.2594, Spectrum: 0.0002
+
+Epoch 50/50
+Training:   0%|          | 0/2 [00:00<?, ?it/s]Training: 100%|██████████| 2/2 [00:00<00:00, 72.94it/s]
+Evaluating:   0%|          | 0/2 [00:00<?, ?it/s]Evaluating: 100%|██████████| 2/2 [00:00<00:00, 101.57it/s]
+Train - Bipartite: 0.2581, Spectrum: 0.0002
+Val   - Bipartite: 0.2532, Spectrum: 0.0002
+New best validation loss: 0.2532. Saving model...
+Training complete!

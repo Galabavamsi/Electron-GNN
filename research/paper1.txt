@@ -1,0 +1,880 @@
+                                                                                                                                                                                                                  This article is licensed under CC-BY 4.0
+
+                                                                                                          pubs.acs.org/JCTC                                                                                                                                    Article
+
+
+
+                                                                                                          Cost-Eﬃcient High-Resolution Linear Absorption Spectra through
+                                                                                                          Extrapolating the Dipole Moment from Real-Time Time-Dependent
+                                                                                                          Electronic-Structure Theory
+                                                                                                          Eirill Hauge, Håkon Emil Kristiansen, Lukas Konecny, Marius Kadek, Michal Repisky,
+                                                                                                          and Thomas Bondo Pedersen*
+                                                                                                                Cite This: J. Chem. Theory Comput. 2023, 19, 7764−7775                          Read Online
+See https://pubs.acs.org/sharingguidelines for options on how to legitimately share published articles.
+
+
+
+
+                                                                                                          ACCESS                        Metrics & More                             Article Recommendations                *
+                                                                                                                                                                                                                          sı Supporting Information
+      Downloaded via INDIAN INST OF TECH BHILAI on April 6, 2026 at 09:48:18 (UTC).
+
+
+
+
+                                                                                                          ABSTRACT: We present a novel function tting method for
+                                                                                                          approximating the propagation of the time-dependent electric
+                                                                                                          dipole moment from real-time electronic structure calculations.
+                                                                                                          Real-time calculations of the electronic absorption spectrum
+                                                                                                          require discrete Fourier transforms of the electric dipole moment.
+                                                                                                          The spectral resolution is determined by the total propagation
+                                                                                                          time, i.e., the trajectory length of the dipole moment, causing a
+                                                                                                          high computational cost. Our developed method uses function
+                                                                                                          tting on shorter trajectories of the dipole moment, achieving
+                                                                                                          arbitrary spectral resolution through extrapolation. Numerical
+                                                                                                          testing shows that the tting method can reproduce high-
+                                                                                                          resolution spectra by using short dipole trajectories. The method
+                                                                                                          converges with as little as 100 a.u. dipole trajectories for some
+                                                                                                          systems, though the diculty converging increases with the spectral density. We also introduce an error estimate of the t, reliably
+                                                                                                          assessing its convergence and hence the quality of the approximated spectrum.
+
+
+                                                                                                          1. INTRODUCTION                                                                 spectrum contains nonlinear (e.g., two-photon) as well as
+                                                                                                          The rapid advancement of laser technology in the past decades                   linear absorption lines.11 For weak pulses, the nonlinear eects
+                                                                                                          allows us to probe matter on spatiotemporal scales that                         are small, and the absorption spectrum is dominated by linear
+                                                                                                          approach the characteristic time and length scales of the                       lines. In practice, the induced electric dipole moment is
+                                                                                                          electron, opening the eld of attosecond science.1,2 This                       recorded in the course of the simulation and subsequently
+                                                                                                          development has forced quantum chemists to shift their                          transformed to the frequency domain to yield an absorption
+                                                                                                          attention from the time-independent to the time-dependent                       cross section. When using the conventional discrete Fourier
+                                                                                                          Schrödinger and Dirac equations.3−5 Numerical approaches to                    transform to process the signal, the spectral resolution is
+                                                                                                          laser-driven electron dynamics are often labeled real-time                      inversely proportional to the number of time steps N and the
+                                                                                                          methods to distinguish them from the response-theoretical                       time-step length Δt, as Δω = 2π/(NΔt). Obtaining sucient
+                                                                                                          methods to the time-dependent Schrödinger/Dirac equation,                      spectral resolution typically requires tens to hundreds of
+                                                                                                          the latter solving the equations of motion perturbatively in the                thousands of time steps since Δt cannot be increased beyond a
+                                                                                                          frequency domain.6,7                                                            certain limit if rapid oscillations of the electron density are to
+                                                                                                             Even without explicit reference to results derived from                      be captured. Moreover, increasing Δt reduces the accuracy and
+                                                                                                          perturbation theory such as, e.g., Fermi’s golden rule, it is still             stability of the numerical integration scheme used to propagate
+                                                                                                          possible to extract linear and low-order nonlinear optical                      the electronic degrees of freedom. As the computational eort
+                                                                                                          properties from nonperturbative real-time simulations, includ-                  in each time step requires multiple rebuilds of the Hamiltonian
+                                                                                                          ing electronic absorption spectra and time-resolved pump−                       matrix, it is comparable to several iterations of a ground-state
+                                                                                                          probe absorption spectra that would be hard or impossible to
+                                                                                                          compute using response theory�see refs 8−12 for recent
+                                                                                                          examples.                                                                       Received: June 30, 2023
+                                                                                                             In this work, we focus on electronic absorption spectra                      Revised: October 2, 2023
+                                                                                                          extracted from electron-dynamics simulations driven by a                        Accepted: October 3, 2023
+                                                                                                          Dirac-delta impulse, which excites the molecule into all dipole-                Published: October 24, 2023
+                                                                                                          allowed excited states simultaneously.8 Due to the non-
+                                                                                                          perturbative nature of real-time methods, the resulting
+                                                                                                                                                © 2023 The Authors. Published by
+                                                                                                                                                      American Chemical Society                                                    https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                                                                                                                   7764                                     J. Chem. Theory Comput. 2023, 19, 7764−7775
+Journal of Chemical Theory and Computation                                                 pubs.acs.org/JCTC                                        Article
+
+optimization within the chosen electronic-structure model.13                 mechanics in a nite-dimensional Hilbert space. The form of
+Hence, there is considerable interest in decreasing the number               the dipole function thus is motivated by the underlying
+of time steps required to achieve sucient spectral resolution.              physics, with unknown parameters to be determined by tting
+   In addition to reducing the number of time steps, it is                   a short dipole trajectory from a real-time simulation. The tted
+possible to increase the computational eciency of real-time                 function may be evaluated at any point in time, meaning that it
+electronic structure methods by disregarding negligible basis                can be extrapolated in the time domain to arbitrary future time.
+functions,14 basis-function pairs and quartets.15 As a result, in a          This further implies that we can achieve arbitrary spectral
+large molecule, although there are (N 4) electron repulsion                  resolution. For suciently weak Dirac-delta impulse, the
+                                                                             evaluation of absorption spectra based on these tted functions
+integrals (ERIs) in total, it can be shown that only (N 2) of
+                                                                             may use analytical expressions for the linear response
+them are signicant, where N refers to the number of basis                   function.6
+functions. As shown within real-time time-dependent density-                    Working in the time domain, a quantitative error measure of
+functional theory (RT-TDDFT), a large prefactor associated                   the tted dipole function can be monitored during the course
+with the evaluation of non-negligible ERIs can further be                    of the real-time simulation and used to evaluate convergence.
+reduced by using, e.g., the resolution-of-the-identity method.16             This way, an unnecessarily long real-time propagation can be
+By applying a spatial truncation radius upon the time-                       avoided by automatically terminating the propagation upon
+dependent density matrix, RT-TDDFT can approach the                          convergence of the t. The developed method is independent
+linear (N ) scaling.17,18                                                    of the quantum mechanical model and is tested with several
+   Previous eorts to improve the spectral resolution have been              molecular systems using mainly RT-TDDFT.8,33−38 Despite
+made by estimating excitation energies through various signal                certain aws arising mainly from the almost universally
+processing techniques.19−21 More recently, Bruner et al.22                   adopted adiabatic density-functional approximation,3,39 RT-
+investigated the use of Padé approximants to interpolate the                TDDFT is the far most widely used electronic-structure
+discrete Fourier transforms used for the absorption spectrum.                method for laser-driven electron dynamics. With computa-
+These are all methods operating in the frequency domain,                     tional costs comparable to (or below) time-dependent
+leaving no other validation options other than comparison with               Hartree−Fock theory,40 RT-TDDFT takes into account
+a fully propagated spectrum.                                                 electron-correlation eects that would otherwise require
+   The original periodic signal is typically damped using a                  advanced and computationally expensive wave function
+decaying exponential function to reduce unwanted artifacts                   theories.4,5 To demonstrate the independence of the under-
+arising when the discrete Fourier transform is applied to                    lying electronic-structure theory, we also present results
+oscillating functions in simulations with nite trajectory length.           obtained from real-time time-dependent conguration inter-
+In the time domain, the number of time points can be                         action singles (RT-TDCIS)41−43 theory.
+increased by padding the damped signal with zeros, leading to                   We start with a short presentation of the electric-dipole
+ner spectra. However, this articial extension of the trajectory            approximation within real-time simulations before introducing
+length can be applied only to suciently damped signals.                     the proposed method for tting the time-dependent electric-
+   In this work, we investigate a more sophisticated and                     dipole moment. After briey laying out the simulation details
+powerful alternative: the extrapolation of a short signal. The               for the real-time simulation of a selection of systems, the
+discrete Fourier transform of an extrapolated signal achieves an             results of the tting method for these systems are presented
+increasingly higher spectral resolution as the extrapolation                 and discussed. Finally, we reect on the performance of the
+length increases. This requires the development of a stable and              tting method and discuss potential future improvements.
+reliable method for time-series forecasting. The inherently
+harmonic character of the time-dependent wave function in the                2. THEORY
+absence of an external eld suggests that such forecasting of                In this work, we employ the following conventions: Subscripts
+molecular properties should be possible. Importantly, the                    u, v denote Cartesian components, vectors are typed in
+forecasted signal can be veried in the time domain by                       boldface, and quantum-mechanical operators are denoted by a
+comparing it with a relatively few additional time steps. To the             hat. Following the convention of response theory by Olsen and
+best of our knowledge, no published work exists on improving                 Jørgensen,6 we dene the Fourier transform and its inverse
+the spectral resolution by such an extrapolation of the time-                according to
+dependent dipole moment.
+                                                                                                            1
+   The current success and popularity of machine learning is                    f( )=         [f (t )] =         f (t )e i t dt
+undeniable, including use cases in chemistry,23−29 and one                                                 2                                               (1)
+might be tempted to leverage articial neural networks for
+forecasting the time-dependent electric-dipole moment.                          f (t ) =       1
+                                                                                                [f ( )] =       f ( )e i t d
+                                                                                                                                                           (2)
+However, while articial neural networks are powerful tools
+for pattern detection in large data sets, they struggle with                 where the transformed function is denoted by a tilde. Atomic
+precise and reliable extrapolations.30,31 Although the universal             units are used throughout, unless otherwise specied.
+approximation theorem32 tells us that an excellent interpolation                2.1. Real-Time Simulations of Absorption Spectra.
+can be achieved, it does not guarantee a stable extrapolation. In            Within the clamped-nucleus Born−Oppenheimer approxima-
+order to achieve a stable extrapolation, overtting must be                  tion, real-time simulations of electronic absorption spectra
+avoided by enforcing sucient restrictions.                                  typically assume the electric-dipole approximation where a
+   In this article, we present a novel approach for obtaining                molecule is subjected to a time-dependent spatially uniform
+high-resolution absorption spectra from real-time simulations                electric eld, F(t). The time-dependent Hamiltonian reads
+of laser-driven electron dynamics by exploiting a priori
+knowledge of the form of the dipole function from quantum                       H(t ) = H0 + V (t )                                                        (3)
+
+                                                                      7765                                              https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                                                 J. Chem. Theory Comput. 2023, 19, 7764−7775
+Journal of Chemical Theory and Computation                                                            pubs.acs.org/JCTC                                                            Article
+
+where Ĥ 0 is the time-independent electronic Hamiltonian, and                                                                   |t |       1
+                                                                                                  ( )=         [ u (t )e            ]=                        (t )e i( + i )t dt
+the interaction operator is given by                                                          u
+                                                                                                                                           2       0
+                                                                                                                                                          u                                (8)
+
+   V (t ) =     · u F (t )                                                 (4)            where we have used that the induced dipole moment vanishes
+                                                                                          for t < 0. The Fourier transform thus becomes a Laplace
+where μ̂ is the electric dipole moment operator. The linear                               transform. The parameter           + can be interpreted as a
+polarization direction of the electric eld is determined by real                         common (inverse) lifetime of all excited states, giving rise to
+unit vector u, such that the eld aligns with one of the                                  Lorentzian line shapes in the simulated absorption spectra.47
+Cartesian axes. This implies the form V̂ (t) = −μ̂ uF(t), where μ̂ u                      The discrete Fourier transform, however, requires a very large,
+is the component of μ̂ along the polarization direction.                                  often prohibitive, number of time steps to achieve sucient
+   We assume that the electronic system is in the ground state |                          spectral resolution. In the following sections, we describe an
+0⟩ at time t < 0, and that the external eld F(t) is only active                          extrapolation technique aiming at high resolution with a short
+between t = 0 and time t0 ≥ 0. At time t0, the Hamiltonian                                simulation time.
+reduces to the time-independent Hamiltonian such that                                        2.2. Expected Form of the Electric Dipole Moment.
+Schrödinger’s equation for t ≥ t0 becomes                                                Once the external eld is turned o, the time-dependent
+                                                                                          electric dipole moment evolves according to
+                   d                                                                      μu(t) = ⟨Ψ(t)|μ̂ u|Ψ(t)⟩, where |Ψ(t)⟩ is dened in eq 6. The
+   H0| (t ) = i       | (t )
+                   dt                                                      (5)            dipole moment oscillates with the Bohr frequencies ωnm = En −
+                                                                                          Em according to
+The time-dependent wave function in the absence of the
+external eld oscillates around the solution at time t0, |Ψ(t0)⟩ =                                                   {Re[ n| u |m k n*(t0)km(t 0)]cos( nm(t
+                                                                                              u (t ) = 2                                                                                t 0))
+∑n kn(t0) |n⟩, as given by                                                                                  n>m
+
+   | (t ) = e iH0(t t0)| (t 0) =          kn(t0)e iEn(t t0)|n                                                  Im[ n| u |m kn*(t 0)km(t0)]sin( nm(t                            t 0))}
+                                                                           (6)
+                                     n
+                                                                                                        +                kn(t0)|2 n| u |n
+where |n⟩ denotes a normalized eigenfunction of the                                                             n                                                                          (9)
+unperturbed Hamiltonian, Ĥ 0 |n⟩ = E n |n⟩. 44,45 This                                   for time t ≥ t0. The function form of the approximated dipole
+                                                                                                               48
+
+formulation is exact when the electronic continuum is                                     moment μu(t) ≈ μu(t) will therefore be given by
+excluded, e.g., by choosing a xed, nite basis, as commonly
+                                                                                                                   Nu
+done in quantum chemistry. Actual simulations are not
+                                                                                                (t ) = c 0u +            [ciu sin( iu(t         t 0)) + c Nu u + i cos( iu(t       t0))]
+performed in the energy eigenbasis but in, e.g., a basis of                                   u
+                                                                                                                   i=1
+Slater determinants, implying that the coecients kn(t0) are                                                                                                                             (10)
+not known.
+    In order to obtain the electronic absorption spectrum                                 where Nuω is the number of participating frequencies ωui , each
+averaged over all molecular orientations relative to the electric                         frequency with two independent linear coecients cui and cNu uω+i.
+eld, the time-dependent electric dipole moment μu(t) =                                   If we can determine these frequencies and their corresponding
+⟨Ψ(t)|μ̂ u|Ψ(t)⟩ is calculated in three separate simulations with                         real coecients from a short dipole time series, then we obtain
+the electric eld polarized in each of the three Cartesian                                a continuous dipole function and, hence, innite spectral
+directions (u = x, y, z). The absorption cross-section is then                            resolution.
+obtained from the Fourier transform of the dipole moments,                                   As described in detail below, we estimate the participating
+μ̃ u(ω), as46                                                                             frequencies using the poles of a Fourier−Padé approximant,
+                  ÄÅ                                                        ÉÑ
+                   ÅÅ                                                        Ñ
+                    ÅÅ ( )F ( )                                 ( )F *( ) ÑÑÑ
+                                                                                          while the linear coecients are determined using linear
+              ImÅÅÅ x                                                        ÑÑ
+                                              )F *( )
+                                                                              Ñ
+                             *
+                     ÅÅ |F ( )|2                                |F ( )|2 ÑÑÑ
+          4                              y(                                               regression in a subsequent step.
+
+                      ÅÅÇ                                                     ÑÖ
+                                                            z
+   S( ) =                        +                      +                                    2.3. Estimating Bohr Frequencies. In order to estimate
+           3c                             |F ( )|2
+                                                                                          the frequencies of the dipole moment, we investigate the
+                                                                         (7)              singular points of the Fourier−Padé approximant, originally
+where c is the speed of light. The resulting spectrum contains                            introduced in real-time quantum simulations by Bruner et al.22
+both linear (one-photon transitions between the ground and                                In general, the Padé approximant is used to accelerate
+excited states) and nonlinear (multiphoton transitions between                            convergence of a truncated power series. The discrete Fourier
+the ground and excited states and one- and multiphoton                                    transform can be written as the power series
+transitions between excited states) absorptions, as recently                                                   t
+                                                                                                                    Nt 1
+stressed by Guandalini et al.11 We note that only the induced                                 u
+                                                                                                ( )=                         u
+                                                                                                                                 (tn)z n
+dipole moment, that is, the total dipole moment with the static                                            2        n= 0                                                                 (11)
+ground-state part subtracted, contributes to the absorption                               where z depends on the frequency according to
+cross section, but for notational convenience, we only
+                                                                                                                             ) t
+distinguish between that and the total dipole moment when                                    z     z( ) = e(i                                                                            (12)
+it is strictly required.
+   Since the dipole moment is calculated on a nite discrete                              The diagonal Fourier−Padé approximates the Fourier trans-
+time grid, the Fourier transforms are replaced by discrete                                form using two polynomials Pu(z) and Qu(z) of degree
+Fourier transforms, thus introducing articial periodic                                   M = (Nt − 1)/2
+boundary conditions. To avoid artifacts from these, the dipole                                                             t Pu(z( ))
+moment is multiplied by a damping factor before the discrete                                 [M / M ] ( ) =
+Fourier transform, i.e.,
+                                                                                                       u
+                                                                                                                          2 Q u(z( ))                                                    (13)
+
+                                                                                   7766                                                                https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                                                                                J. Chem. Theory Comput. 2023, 19, 7764−7775
+Journal of Chemical Theory and Computation                                                  pubs.acs.org/JCTC                                                       Article
+
+where the coecients of the polynomials create a Toeplitz                        Y ( pu) = log10(|Q u(z( pu))|)                                                           (19)
+linear system, for details see ref 22. The Fourier−Padé poles,
+denoted zup, are found by                                                     The base-10 logarithm is used to manage the extreme scaling
+                                                                              of both features, as prospective frequencies should cause
+   Q u(zpu) = 0                                                 (14)          Qu(z(ωup)) to approach zero and hence be a nearly singular
+where the damping parameter γ is set to zero, as the damping                  point of [M/M]μu(ωup). The features are constructed such that
+parameter removes the singularities of the spectrum. The Bohr                 estimated frequencies should be close to rup = (0, 0), while
+frequencies are positive and real-valued, while the frequencies               redundant roots should be closer to rup = (1, 1).
+corresponding to the roots of Qu(z) will be complex. The                         We use the K-means clustering algorithm (see, e.g., refs 52
+number of roots of Qu(z), (which amounts to M roots), should                  and 53), implemented in the Python SciKit-Learn54 library,
+also signicantly exceed the number of Bohr frequencies. The                  with K = 2 to classify prospective frequencies. The 2-means
+potential frequencies are given by                                            clustering algorithm is a computationally inexpensive way to
+                                                                              separate a set into two categories. The centroid for the cluster
+     u
+               ln(zpu)                                                        of potential frequencies should be closer to (0, 0), whereas the
+     p =
+                  t                                             (15)          centroid for the redundancy cluster should be closer to (1, 1).
+                                                                                 2.4. Determining Linear Coeﬃcients. Once the
+where ln(zup) returns the principal value of the logarithm. Only              frequencies are estimated, the linear coecients are
+roots Im(zup) > 0 are considered, as the complex conjugate root               determined by using linear regression. The coecients are
+theorem states that complex roots will form conjugate pairs.                  optimized by minimizing the cost function55
+These conjugate pairs yield duplicates of the real-valued                                     Nt 1
+frequencies. Real-valued roots zpu yield purely imaginary
+frequencies and are therefore also excluded. The potential                       R ( c u) =             [ u (tn)       u
+                                                                                                                           (tn ; c u)]2
+                                                                                              n=0                                                                         (20)
+frequencies ωup discard the imaginary component and should
+represent the extrema of the Fourier−Padé spectrum, not                      Using the general form of the dipole moment in eq 9, the
+singular points like zup.                                                     linear coecients may be optimized using a simple least-
+   Estimating the potential frequencies uses the Python                       squares optimization. The only restraint in the optimization of
+NumPy49 library to compute the eigenvalues of the companion                   these coecients is that they are real. This tting procedure is
+matrix50 of the polynomial Qu(z) to determine its roots. This                 general for any type of external eld, F(t). However, as shown
+method exhibits poor scaling with respect to the number of                    by Hauge,48 restricting the coecients is crucial to avoid
+time points, Nt, representing a computational bottleneck of the               overtting the dipole moment.
+dipole-moment μu(t) tting procedure. In real-time simu-                         The form μu(t) in eq 10 is based on the full dipole moment,
+lations using very small time steps, one may safely increase the              correct through all orders in perturbation theory, and is
+step length on the dipole data used to create the Fourier−Padé               independent of the electric eld. In this work, we use a Dirac
+approximant to alleviate the computational cost. As shown by                  delta-type impulse8 of strength κ
+Mattiat and Luber,51 the convergence of the Fourier−Padé
+approximant is mostly impacted by the trajectory length NtΔt,                    F (t ) =        (t )                                                                     (21)
+and not the time step itself. However, the discrete Fourier
+transform and hence also the Fourier−Padé are periodic with a                which has an innitely wide frequency distribution and thus
+cycle length of 2π/Δt. Peaks above π/Δt will fold back due to                 generates the full absorption spectrum for the given polar-
+antisymmetry and appear as negative duplicates polluting the                  ization direction. This implies that t0 = 0. Further, we assume
+spectrum. Therefore, it is crucial to keep the time step Δt < π/              that the electric eld strength is suciently weak, such that we
+ωmax, where ωmax is the largest signicant frequency in the                   may regard the interaction operator V̂ (t) as a time-dependent
+signal.                                                                       perturbation and assume that the interaction induces only one-
+   The potential frequencies ωup must be classied as either an               photon transitions from the ground state, i.e., a linear
+estimated frequency or a redundant root. The classication is                 absorption spectrum. The electric dipole moment should
+based on the assumption that ln (zup)/(iΔt) should have a                     then be of the form μu(t) ≈ μ(0)  u + μu (t), where the zeroth
+                                                                                                                      (1)
+
+signicant imaginary component if ωup is a redundant root,                    order dipole moment corresponds to the ground-state value,
+while it should lie close to the real axis if ωup corresponds to an           μ(0)
+                                                                                u = μu(t = 0). We now investigate an analytical expression
+
+actual Bohr frequency. This further means that Qu(z(ωup))                     for the rst-order correction of the dipole moment induced by
+                                                                              a weak Dirac delta impulse.
+should be close to zero and that [M/M]μu(ωup) should be large
+                                                                                 We start with the exact expression for the linear response
+for estimated frequencies. Hence, we create a two-dimensional                 function6
+representation rup of the prospective frequencies ωup given by
+                                                                                                                                                            n0
+                           X( pu)      min qu[X ( qu)]                             u
+                                                                                       ; Vu( )      +i    =        2F ( )          | 0| u |n |2
+                                                                                                                                                  (   + i )2         2
+   [r pu]x = 1                      u                    u
+                                                                                                                            n 0                                      n0
+                       max qu[X (   q )]   min qu[X (    q )]   (16)                                                                                                      (22)
+                                                                              where we have used the Fourier transform of the interaction
+                      Y ( pu)   min qu[Y ( qu)]                               operator V̂ (t)
+   [r pu]y =
+               max qu[Y ( qu)]        min qu[Y ( qu)]           (17)             Vu( ) = u F ( ), F( ) =
+                                                                                                                             2                                            (23)
+where the unnormalized features are dened as
+                                                                              The linear response function and the rst-order correction to
+   X ( pu) = log10(|[M /M ] u ( pu)|)                           (18)          the dipole moment are related by
+                                                                       7767                                                             https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                                                                 J. Chem. Theory Comput. 2023, 19, 7764−7775
+Journal of Chemical Theory and Computation                                                           pubs.acs.org/JCTC                                                 Article
+
+           ) +i =                 [ u(1)(t )e    |t |
+                                                    ]. Since μ1u(t < 0) = 0, we          individual components, which may introduce additional errors
+  u ; Vu(
+                                                                                         due to overtting in each component.
+get the relation
+                                                                                            Alternatively, the tting algorithm may estimate the
+             (1)     (         i )t                                                      frequencies of each component separately and then optimize
+             u (t )e                  dt
+                                                                                         the linear coecients for the full dipole moment. This way, the
+     0
+                                                        n0                               additional coecient restrictions can be used in the
+         =    2            0| u |n |2                                                    optimization. In our experience, however, this produces a
+                   n 0                     (   + i )2             2
+                                                                  n0       (24)          vast number of estimated frequencies leading to problems with
+Using well-known Laplace transforms, it is readily veried that                          overtting even when enforcing positive linear coecients.
+the rst-order dipole correction must be a linear combination                               2.6. Convergence Criterion. The goal of the tting
+of sine waves48                                                                          method is to accurately construct the function μ(t) using the
+                                                                                         shortest possible dipole trajectory. A given trajectory is divided
+    (1)
+    u (t ) =             Bnu sin( n0t ), Bnu = 2 | 0| u |n |2                            into two parts: a tting domain and a verication domain. The
+                   n 0                                                     (25)          linear coecients are optimized by using only the tting
+We have also used that the rst-order perturbation correction                            domain, while the error is calculated on the verication
+to the dipole moment should only include one-photon                                      domain. When estimating the frequencies, however, the entire
+transitions. This further means that the approximated dipole                             available trajectory is used. Measuring the error in the tting
+moment, when using a weak Dirac delta impulse, should have                               domain gives the interpolation error, which is articially low in
+the form                                                                                 cases of overtting, whereas the error in the verication
+                                                                                         window indicates the reliability of the extrapolated dipole
+                         Nu
+                                                                                         moment. The error of the t is estimated using one minus the
+    u
+      (t ) = c 0u +            ciusin( iut )                                             coecient of determination, R2, i.e.,
+                         i=1                                               (26)
+                                                                                                                     [ u (tn)          u (tn)]
+where all sine coecients are positive.                                                     Eu = 1      R2 =     n
+                                                                                                                                          m
+   The coecients of μu(t), approximating the dipole moment                                                          n
+                                                                                                                         [ u (tn)        u ]                                (29)
+from the Dirac delta impulse, are optimized using the least
+absolute shrinkage and selection operator (LASSO)56 method.                              where μmu is the mean value of the induced dipole moment.
+                                                                                         The error measure is unitless and independent of the
+                     l                                            |
+The coecients are determined according to
+                     o
+                     o1                                           o
+                                                                  o
+                                                                                         magnitude of the dipole moment. The tting method can be
+   c uLASSO = argminmo 2 R (c ) +                            |ciu|}
+                                                                  o
+                     o                                            o
+                                                                                         run in parallel with real-time simulations, which are terminated
+
+                     n                                            ~
+                             u
+                   u
+                                                                                         once Eu drops below a predened threshold value. The
+                 c                                      i                  (27)          computational cost of the tting method is not insignicant,
+where λ is the shrinkage parameter restricting the magnitude of                          and we recommend that it is run once per time intervals of
+the coecients, cui . In contrast to the ordinary linear least-                          50−100 a.u. when used to automatically terminate the real-
+squares algorithm, the LASSO method is iterative and,                                    time simulation.
+therefore, somewhat less computationally ecient. In return,                                Computing the error according to eq 29 provides an error
+this makes it possible to enforce positive coecients, as in the                         estimate of the t as a whole. In our experience from testing
+implementation by SciKit-Learn.54 This makes the method less                             the algorithm with ideal multisinusoidal signals, the error of the
+prone to overtting.                                                                     t depends primarily on the frequency estimation. Signicant
+   2.5. Molecular Orbital Decomposition. The electric                                    deviations in the estimated linear coecients were only
+dipole moment can be written as a sum of contributions from                              observed if there were frequencies missing or poorly estimated.
+elementary molecular orbital (MO) transitions8                                           In the case of ideal signals, there would be a signicant error in
+                                                                                         the t only if the frequency estimation failed. Real dipole data
+                        ia
+    u
+        (t ) =         u
+                           (t )                                                          contain noise introduced by numerical integration in time.
+                  ia                                                       (28)          How this aects the distribution of error is unknown, although
+where i and a label occupied and virtual MOs, respectively.                              it is reasonable to believe that the main source of error still lies
+The components μiau (t) are then approximated separately. This                           in the frequency estimation.
+MO decomposition can divide a dense spectrum into a series                                  The error measure Eu cannot distinguish error contributions
+of sparser spectra and aid in the assignment of absorption                               from dierent parts of the spectrum, preventing termination
+lines.8 Clustering the MO components into groups can be used                             once the desired frequency region is converged. In order to
+to oset the increased memory consumption.57 For the tting                              focus on valence excitations in the low-frequency region, we
+method, the creation of clusters with well-separated                                     apply a low-pass (smoothing) lter to remove frequencies
+frequencies could also reduce the accumulation of errors                                 above a cuto frequency ωmax from the dipole moment in the
+when summing the component ts.                                                          time domain. We used a Butterworth lter, implemented by
+   When the individual components are tted, the assumptions                             SciPy,58 which removes the high-energy part of the spectrum
+on the sign of the linear coecients are no longer valid. As is                          while leaving the lower-energy part almost unchanged. If
+clear from the underlying theory and as demonstrated in                                  bound core excitations are the main targets, then a high-pass
+practice by Bruner et al.,22 the same frequencies may be found                           lter must be used instead.
+in several components μiau , and their corresponding partial
+spectra may contain negative peaks. Only the full spectrum, i.e.,                        3. COMPUTATIONAL DETAILS
+the sum of the components, is guaranteed to contain positive                             We test the dipole extrapolation scheme using RT-TDDFT
+peaks exclusively. The ordinary least-squares method must                                simulations, supplemented by a few RT-TDCIS simulations, to
+therefore be used when optimizing the linear coecients of the                           demonstrate its applicability to wave function-based theories.
+                                                                                  7768                                                     https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                                                                    J. Chem. Theory Comput. 2023, 19, 7764−7775
+Journal of Chemical Theory and Computation                                                  pubs.acs.org/JCTC                                                         Article
+
+Table 1. Convergence Times and Corresponding Errors of Systems from RT-TDCIS Calculations
+                    basis          Txver [a.u.]     Tyver [a.u.]     Tzver [a.u.]               Ex                       Ey                      Ez                    ES
+   CH2O          aug-cc-pVDZ          450              600              650                8 · 10−6                  8 · 10−4                 1 · 10−3             1 · 10−3
+   CO2             cc-pVDZ            100              100              100                8 · 10−5                  8 · 10−5                 3 · 10−6             2 · 10−4
+                 aug-cc-pVDZ          250              250              200                6 · 10−5                  6 · 10−5                 3 · 10−4             2 · 10−3
+                 aug-cc-pVTZ          300              300              250                2 · 10−4                  2 · 10−4                 1 · 10−4             2 · 10−3
+   H 2O          aug-cc-pVDZ          150              200              300                1 · 10−5                  2 · 10−4                 7 · 10−5             3 · 10−4
+   NH3           aug-cc-pVDZ          350              300              300                4 · 10−5                  7 · 10−4                 7 · 10−6             3 · 10−3
+
+Table 2. Convergence Times and Corresponding Errors of Systems from RT-TDDFT Calculations
+                      basis          Txver [a.u.]     Tyver [a.u.]    Tzver [a.u.]               Ex                      Ey                      Ez                    ES
+                                                                                                      −8                      −8                      −8
+   Be             aug-ucc-pVTZ          100              100              100               1 · 10                   1 · 10                   1 · 10               6 · 10−6
+   C 2H 6         aug-ucc-pVDZ          750              800              550               6 · 10−4                 7 · 10−4                 5 · 10−4             8 · 10−4
+                  aug-ucc-pVTZ          1000             1000             950               5 · 10−2                 3 · 10−2                 2 · 10−5             6 · 10−3
+   C 6H 6         aug-ucc-pVDZ          1000             1000             550               3 · 10−2                 4 · 10−2                 7 · 10−4             4 · 10−2
+   CH2O           aug-ucc-pVDZ          450              650              700               4 · 10−6                 8 · 10−4                 1 · 10−4             5 · 10−4
+                  aug-ucc-pVTZ          650              900             1000               2 · 10−4                 4 · 10−4                 2 · 10−3             8 · 10−4
+   CH3OH          aug-ucc-pVDZ          1000             1000            1000               2 · 10−1                 8 · 10−1                 4 · 10−2             8 · 10−2
+                  aug-ucc-pVTZ          1000             1000            1000               3 · 10−1                 8 · 10−1                 4 · 10−1             2 · 10−1
+   CH4            aug-ucc-pVDZ          200              200              200               8 · 10−4                 7 · 10−4                 6 · 10−4             2 · 10−3
+                  aug-ucc-pVTZ          350              350              350               4 · 10−4                 3 · 10−4                 3 · 10−4             3 · 10−3
+   CO2            aug-ucc-pVDZ          350              350              250               4 · 10−4                 4 · 10−4                 1 · 10−4             5 · 10−4
+   H 2O           aug-ucc-pVDZ          200              250              300               2 · 10−6                 3 · 10−6                 3 · 10−4             3 · 10−4
+   H2             aug-ucc-pVTZ          100              100              100               1 · 10−7                 1 · 10−7                 8 · 10−8             5 · 10−6
+   He             aug-ucc-pVTZ          100              100              100               9 · 10−8                 9 · 10−8                 1 · 10−7             9 · 10−6
+   LiH            aug-ucc-pVDZ          100              100              300               1 · 10−5                 3 · 10−5                 3 · 10−4             3 · 10−4
+   NH3            aug-ucc-pVDZ          350              400              300               2 · 10−4                 4 · 10−4                 7 · 10−4             1 · 10−3
+
+The RT-TDDFT simulations are performed using the ReSpect                         Our implementation of the dipole-extrapolation algorithm is
+program,59 while the RT-TDCIS calculations are performed                      freely available at https://github.com/HyQD/absorption-
+using the Hylleraas Quantum Dynamics (HyQD) software.60                       spectrum.
+The RT-TDDFT and RT-TDCIS simulations are performed
+with analytic integration at t = 0 au, as described in ref 8. The             4. RESULTS
+subsequent time steps are performed numerically using the                     All reference spectra in this paper are produced from low-pass
+Magnus integrator for the RT-TDDFT simulations8 and the                       ltered electric dipole moments with a trajectory length of
+three-stage Gauss-Legendre integrator61 as described in ref 62                4000 a.u., such that the spectral resolution becomes Δω = 1.6 ·
+with the residual norm convergence criterion 10−14 a.u. for the               10−3 a.u.. In this article, the resolution of the tted spectrum
+implicit equations for the RT-TDCIS simulations.                              S̅ (ω) is the same as its reference spectrum. This is to allow
+   The RT-TDCIS simulations are performed with time step                      direct comparisons of the two spectra, although the resolution
+Δt = 0.01 a.u. and eld strength κ = 10−3 a.u. The RT-TDDFT                   of S̅ (ω) could be made arbitrarily ne. The Fourier transform
+simulations for the organic molecules CH4, CH2O, CH3OH,                       of the approximated dipole moment μu is calculated according
+C2H6, and C6H6 are performed with time step Δt = 0.01 a.u.                    to
+and eld strength κ = 10−4 a.u., while Δt = 0.01 a.u. and κ =                                         1
+                                                                                                                                          u
+10−3 a.u. are used for CO2, H2O, and NH3. For the smallest                           u
+                                                                                         ( )=                  ciu                       i
+
+systems, He, H2, Be, and LiH, Δt = 0.1 a.u. and κ = 10−3 a.u.                                        2     i
+                                                                                                                     (    +i )       2
+                                                                                                                                              ( iu)2                        (30)
+are used.                                                                     The half-life parameter was always set to γ = 0.5 · 10 π, and                          −3
+   Molecular geometries are listed in the Supporting                          the spectra were cut at an estimated ionization energy of 0.5
+Information. The simulations were performed in Dunning’s                      a.u. − ϵHOMO, where the energies of the highest occupied
+cc-pVXZ and aug-cc-pVXZ, X = D,T, basis sets63−65                             molecular orbital ϵHOMO of all systems are listed in the
+(uncontracted in the case of RT-TDDFT calculations). The                      Supporting Information.
+RT-TDDFT simulations were performed using the PBE0                               Using the low-pass lter will leave the lower energy part of
+exchange−correlation potential66−69 in the adiabatic approx-                  the absorption spectrum unaltered, while the higher energy
+imation.                                                                      part is removed and set to zero. Dierences between ltered
+   Simulations are performed for all three Cartesian directions               and unltered spectra are shown in the Supporting
+for all systems, even in cases in which point-group symmetry                  Information. The low-pass lter does not give a clean cuto
+could have been easily exploited to reduce the computational                  at the cuto frequency ωmax but rather a gradual lowering of
+eort to one or two directions. While this is mainly done to                  the peak intensity around ωmax. The cuto frequency should
+make automation simple (identical treatment for all systems),                 therefore be set somewhat higher than the desired range of the
+it also provides a simple check that the extrapolation algorithm              spectrum. We have used ωmax = 4 a.u. for all systems.
+does not signicantly break point-group symmetry due to                          When tting the dipole moment, the available trajectory is
+numerical noise in the input dipole trajectories.                             from when the external eld is turned o at t = 0 to time t =
+                                                                     7769                                                                 https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                                                                   J. Chem. Theory Comput. 2023, 19, 7764−7775
+Journal of Chemical Theory and Computation                                             pubs.acs.org/JCTC                                         Article
+
+Tuver. The linear coecients are determined on the time interval
+[0, Tufit], where Tufit = 0.75Tuver. The frequencies are estimated
+on the entire available trajectory [0, Tuver] but with a limit on
+the total number of data points supplied to the Padé, set to 5 ·
+103. The reduction in points, if exceeding the limit, is done by
+eectively increasing the time step Δt used (by an integer
+factor) when creating the Padé. The error Eu is evaluated only
+on (Tufit, Tuver]. The error in spectrum ES is calculated the same
+way as that in the time domain, as given in eq 29.                          Figure 1. Spectrum of CH2O using the aug-ucc-pVDZ basis in an RT-
+                                                                            TDDFT simulation. The reference spectrum is in solid blue, while the
+    4.1. Performance on a Selection of Systems. For each
+                                                                            yellow dashed line shows the spectrum of the tted functions. The
+spatial direction, the convergence of the t is tested every 50 au          tting errors are Ex = 4 · 10−6, Ey = 8 · 10−4, and Ez = 1 · 10−4.
+in time of the trajectory length, starting from Tmin = 100 a.u..
+The simulation is terminated when the t has converged below                  Among the converged systems, NH3 from RT-TDCIS
+a given threshold or when the trajectory length reaches                     calculations showed the largest error compared to its reference
+Tmax = 1000 a.u., which corresponds to a target minimum                     spectrum (ES = 3 · 10−3). Its spectrum is shown in Figure 2,
+spectral resolution of 0.006 a.u.. The convergence criterion was
+set to Eu < 10−3, a strict threshold corresponding to a near-
+perfect t. The criterion was set based on preliminary
+investigations.48 Since the real-time calculations on a given
+system using three spatial directions of the external eld are
+independent, the trajectory length needed for a converged t
+might vary between the three simulations.
+   The required trajectory length of each spatial direction Tuver
+and their corresponding verication error Eu as well as the
+error in the spectrum ES are listed in Tables 1 and 2. The                  Figure 2. Spectrum of NH3 using the aug-cc-pVDZ basis in an RT-
+tting of the dipole moment from RT-TDCIS calculations is                   TDCIS simulation. The reference spectrum is in solid blue, while the
+shown in Table 1, while the tting of the RT-TDDFT data is                  yellow dashed line shows the spectrum of the converged tted
+found in Table 2. Figures of the approximated spectra of all                functions. This was the poorest approximated spectrum of all
+systems can be found in the Supporting Information.                         converged cases. The tting errors are Ex = 4 · 10−5, Ey = 7 · 10−4,
+                                                                            and Ez = 7 · 10−6.
+   The tting method reached the strict threshold for most
+systems with a maximum spectral error of ES ≤ 3 · 10−3. For all
+converged systems, the approximated functions for dipole                    and it was the approximated spectrum with the most visible
+moment μu(t) reliably reproduce its reference spectrum. The                 deviation from its reference spectrum among the converged
+systems with very sparse spectra (He, H2, and Be) converged                 systems. The approximated spectrum shows a deviation in a
+instantly (Tver = 100 a.u.), providing approximated spectra                 peak at ω ≈ 0.75 a.u., but the rest of the peaks correspond well
+indistinguishable from their reference spectra. In these cases,             to the reference spectrum.
+the tting method achieved a speedup of 10 times compared to                   The tting method only partially converged for C6H6, as well
+the max trajectory length of Tmax = 1000 a.u. or 40 times                   as C2H6 and CH2O with triple-zeta basis, meaning that the
+compared to computing the reference spectra (using 4000                     error of the t was below the set threshold in only one or two
+a.u.). The reduction in computational cost achieved by using                of the spatial directions. Still, the spectral error in all three
+the tting method is relative to the desired spectral resolution.           cases is quite low. The result of the tting of benzene is shown
+We would argue that the least unambiguous way to assess the                 in Figure 3, which had the largest spectral error (ES = 4 · 10−2)
+speedup is to compare the convergence times Tuver with the                  of the three.
+simulation time that would have been used if the tting
+method was not used, i.e., the max trajectory length. Should
+the method converge at the preset max trajectory length, one
+may argue that no simulation time was spared. In this case, one
+still achieves arbitrary improvement in the spectral resolution.
+   Systems with relatively sparse spectra (CH4, CO2, H2O, LiH,
+and NH3) also converged nicely with short dipole trajectories
+(Tuver ≤ 350 a.u.). As the spectral density increases, the tting
+method struggles to converge. Systems like C2H6 and CH2O                    Figure 3. Spectrum of C6H6 using the aug-ucc-pVDZ basis in an RT-
+only converged when using a double-zeta basis set, while the                TDDFT simulation. The reference spectrum is in solid blue, while the
+tting of C6H6 and CH3OH did not achieve errors below the                   yellow dashed line shows the spectrum of the tted functions. The
+low threshold.                                                              tting errors are Ex = 3 · 10−2, Ey = 4 · 10−2, and Ez = 7 · 10−4.
+   The CH2O molecule with a double-zeta basis set converged
+for both of the real-time methods. The spectra of the t in both
+cases are nearly indistinguishable from their reference spectra.              The trajectory length needed for the tting method to
+A comparison between the approximated and reference spectra                 converge strongly depends on the spectral density. We
+from RT-TDDFT calculations is shown in Figure 1. The RT-                    observed a trend in that tting becomes increasingly dicult
+TDDFT triple-zeta case nearly reached the error threshold (Ez               as the spectral density increases. Increasing either the number
+= 2 · 10−3), also providing a very low spectral error (ES = 8 ·             of electrons in the system or the size of the basis set will, in
+10−4).                                                                      general, require longer real-time simulations before the tting
+                                                                     7770                                            https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                                              J. Chem. Theory Comput. 2023, 19, 7764−7775
+Journal of Chemical Theory and Computation                                               pubs.acs.org/JCTC                                         Article
+
+method converges. The trend with increasing basis set size is                  problems with near-degeneracy of the linear system. As
+clearly seen from the tting of CO2 from RT-TDCIS                              pointed out by Cooper et al.,70 the Fourier−Padé used in
+calculations. The simulation using the cc-pVDZ basis set                       real-time spectroscopy is known to struggle with dense spectra.
+converges faster (Tuver = 100 a.u.) than when using the larger                 The tting method introduces a measure of the error Eu that
+basis sets like the aug-cc-pVDZ basis set (Tuver ≤ 250 a.u.) or                does not rely on any reference spectrum. This introduces a
+aug-cc-pVTZ basis set (Tuver ≤ 300 a.u.).                                      more reliable way of estimating the error in the approximated
+   Only the t of CH3OH did not result in errors below the                     spectrum.
+convergence threshold in any of the spatial directions. This was                  4.2. Fitting Using MO Decomposition. We assessed the
+true for both the double and triple-zeta basis sets (from RT-                  performance of the tting procedure used to extrapolate the
+TDDFT calculations). The result using a triple-zeta basis set is               components of the dipole moment of C6H6 decomposed to the
+shown in Figure 4 and is the case with the highest error in the                MO pairs μiau in the RT-TDDFT calculation. Instead of
+                                                                               creating a tting function for each individual MO pair, which
+                                                                               would increase the memory overhead, we clustered the
+                                                                               components μiau into groups of ten. These groups are formed
+                                                                               so that the overall sparsity of the spectra obtained for each
+                                                                               cluster is maintained. This is accomplished by spreading the
+                                                                               individual constituents of the cluster across the energy range. A
+                                                                               tted function of each cluster was then created from the sum of
+                                                                               the MO pairs that the cluster contains. The total error is
+                                                                               measured for the full dipole moment, μu(t). Some of the MO
+Figure 4. Spectrum of CH3OH using the aug-ucc-pVTZ basis in an                 pairs were omitted entirely, making the MO decomposition
+RT-TDDFT simulation. The reference spectrum is in solid blue, while            work as a low-pass lter. When tting components, the low-
+the yellow dashed line shows the spectrum of the tted functions. The
+tting errors are Ex = 3 · 10−1, Ey = 8 · 10−1, and Ez = 4 · 10−1.
+                                                                               pass lter is, therefore, not needed.
+                                                                                  Fitting the decomposed signal, however, did not improve the
+                                                                               convergence compared with when the full dipole moment was
+time domain, Eu ∼ 10−1. There is a signicant deviation from                   used for extrapolation. Simulations for both directions μx and
+the reference spectrum, although the main features are intact.                 μy reached the max trajectory length (t = 1000 a.u.) without
+Of all systems in this paper, this gave the worst approximation                the tting error going below the error threshold. The errors (Ex
+to the reference spectrum. Despite this, the spectrum S̅ (ω) still             = 1 · 10−2 and Ey = 1 · 10−2) were only slightly lower compared
+provides a reasonable coarse approximation.                                    with tting without the MO decomposition. The last spatial
+   These results are promising in all cases, as the converged t               direction μz converged at Tver = 650 a.u. (Ez = 4 · 10−4), which
+seems to reproduce its reference spectrum reliably with only                   is somewhat slower than without MO decomposition. The
+minor deviations in the peak intensities. The error of the t Eu               spectral error was ES = 9 · 10−3, which corresponds to a low
+also correlates with the spectral error, ES. This predictability is            spectral error.
+crucial if the convergence criterion is used to automatically                     Although the MO decomposition did not lead to an
+terminate real-time simulations. Our results also indicate that                accelerated convergence of the tting method, we still
+the convergence criterion used in this study is stricter than                  observed improvements. For example the simulation with
+necessary. A slight relaxation in the criterion might lead to                  Tuver = 600 a.u. has a lower error of the t for the decomposed
+faster convergence without signicantly impacting the quality                  dipole moment (Ex = 6 · 10−2, Ey = 4 · 10−2, and Ez = 1 · 10−3)
+of the approximated spectrum.                                                  for all spatial directions compared to the t on the full dipole
+   For the estimated dipole moment, the frequencies and their                  moment, (Ex = Ey = 3 · 10−1 and Ez = 2 · 10−3). The
+corresponding linear coecients are known. For a successful                    decomposed t in Figure 5 (ES = 3 · 10−2) is visibly improved
+t, one may therefore obtain the transition probability |⟨0|μ̂ u|              compared to the t using the full dipole moment in Figure 6
+n⟩|2 of a transition with energy En − E0 directly from the linear              (ES = 2 · 10−1).
+coecient, as |⟨0|μ̂ u|n⟩|2 = Bun/(2κ). This could be used to                     It is important to note that the scope of our testing of the
+calculate the oscillator strength and create stick spectra.                    tting method using MO decomposition was limited. Previous
+However, estimated frequencies in dierent spatial directions                  success using the Fourier−Padé approximant in combination
+but corresponding to the same transition will have a small error               with the MO decomposition on RT-TDDFT data suggests that
+associated with the frequencies. In order to compute the                       this in many cases is very eective.22 Our study, however, raises
+oscillator strength, one would therefore have to assess which                  cause for caution regarding the use of the Fourier−Padé
+estimated frequencies across the spatial directions correspond
+to the same transition.
+   The convergence of the dipole moment tting depends
+primarily on the frequency estimation. When the t does not
+converge, it follows that the Fourier−Padé approximant is not
+suciently converged to accurately capture the Bohr
+frequencies. The quality of the Fourier−Padé depends on
+the dipole trajectory length tN rather than the number of steps
+or step length.51 However, there is no given nal time tN
+ensuring convergence; the necessary trajectory length depends                  Figure 5. Spectrum of C6H6 using the aug-ucc-pVDZ basis in a RT-
+on the spectral density. High spectral density can cause the                   TDDFT simulation. The reference spectrum is in solid green, while
+Fourier−Padé to fail, even for relatively long simulations. The               the orange dashed line shows the spectrum of the tted functions
+general Padé approximant is prone to instabilities due to                     using molecular orbital decomposition from Tuver = 600 a.u..
+
+                                                                        7771                                           https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                                                J. Chem. Theory Comput. 2023, 19, 7764−7775
+Journal of Chemical Theory and Computation                                              pubs.acs.org/JCTC                                        Article
+
+                                                                              systems, although aspects of the method require further
+                                                                              investigation.
+                                                                                 Our testing of the tting method using the molecular orbital
+                                                                              decomposition of a single system gave mixed results. The
+                                                                              decomposition did not enable the t to meet the convergence
+                                                                              criterion, although we observed improvements in the
+                                                                              approximated spectrum. This motivates the need for further
+                                                                              investigations.
+Figure 6. Spectrum of C6H6 using the aug-ucc-pVDZ basis in a RT-                 An apparent weakness of the current implementation is the
+TDDFT simulation. The reference spectrum is in solid blue, while the          way of estimating frequencies. Future versions should not rely
+yellow dashed line shows the spectrum of the tted functions from
+Tuver = 600 a.u..
+                                                                              on Fourier−Padé but rather investigate other methods of
+                                                                              estimating frequencies. This could include other methods for
+                                                                              harmonic inversion or letting the function form of the tted
+approximant: The Padé can struggle, even when using MO                       dipole moment be a truncated Fourier series based on an
+decomposition. The unknown amount of error introduced to                      estimation of the fundamental frequency. The same
+the nal spectrum by this procedure remains an open problem                   frequencies can appear in all spatial directions, which could
+that the user should be aware of when analyzing spectra with                  be exploited to improve frequency estimation. In particular, in
+the Fourier−Padé method with MO decomposition.                               cases where the frequencies are successfully estimated in one
+  The particular form of components μupq is also very                         spatial direction, knowledge of these existing frequencies could
+dependent on the quantum mechanical method used to                            be used to alleviate the search in other spatial directions with
+compute the time-dependent wave function. Using MO                            potentially higher spectral density. Improving the frequency
+decomposition on the electric dipole moment from RT-                          estimation is crucial for stabilizing the tting method for
+TDCCSD calculations leads to large overlaps in frequencies                    systems with a high spectral density.
+among dierent components.48 The usefulness of such                              This work has focused on the Dirac delta impulse, although
+decomposition might vary among the dierent quantum                           the general tting algorithm may be used on systems with any
+mechanical frameworks.                                                        type of external eld. Using a laser pulse targeting a specic
+                                                                              spectral region may provide both an upper and lower bound
+5. CONCLUSION                                                                 when estimating the frequencies. Any a priori information
+We have developed a novel method for creating functions                       about the frequencies should be exploited by the tting
+approximating the electric dipole moment from real-time                       algorithm. Additionally, the Dirac delta impulse targets all
+calculations. The tted functions for the dipole moment in the                excitation energies, thereby maximizing the spectral density. It
+three spatial directions can then be used to produce absorption               is not unlikely that a narrow-band laser pulse would somewhat
+spectra with an arbitrary high resolution. Real-time calculations             alleviate the tting process by reducing the spectral density.
+of absorption spectra require the use of discrete Fourier
+transforms, demanding long simulation times to obtain high
+spectral resolution. In our work, we have shown that the length
+                                                                              ■   ASSOCIATED CONTENT
+                                                                              sı Supporting Information
+                                                                              *
+of the real-time simulations and, hence, the computational cost               The Supporting Information is available free of charge at
+can be greatly reduced by the developed tting method.                        https://pubs.acs.org/doi/10.1021/acs.jctc.3c00727.
+   We introduced a quantitative error measure to evaluate the
+convergence of the t. For all systems in this work, a converged                    Molecular geometries and HOMO energies for all
+t reliably reproduced the reference spectrum from long real-                       systems. Comparisons between the spectra of ltered
+time calculations. A convergence criterion of 10−3 seems to be                      versus unltered dipole moments. Spectra of the tted
+quite strict, and further studies should be conducted to                            functions of the dipole moments compared with the
+investigate the impact of slightly higher errors on the estimated                   corresponding reference spectrum (PDF)
+spectrum. In order to reduce the computational cost of
+calculating absorption spectra, real-time calculations should be
+automatically terminated once the convergence criterion is
+reached.
+                                                                              ■   AUTHOR INFORMATION
+                                                                              Corresponding Author
+   In this work, we set the verication window to 25% of the                    Thomas Bondo Pedersen − Hylleraas Centre for Quantum
+available dipole trajectory. The critical step of the method is                  Molecular Sciences, Department of Chemistry, University of
+determining the frequencies, which always uses all available                     Oslo, 0315 Oslo, Norway; orcid.org/0000-0001-8967-
+data. For the linear optimization, the verication window                        6055; Email: t.b.pedersen@kjemi.uio.no
+should include an entire period of the smallest frequency in the
+signal as an insuciently large verication window may lead to                Authors
+misleading error estimates. In future work, the verication                     Eirill Hauge − Hylleraas Centre for Quantum Molecular
+window should depend on an estimate of the smallest                               Sciences, Department of Chemistry, University of Oslo, 0315
+frequency in the signal based on dierences in the molecular                      Oslo, Norway; Department of Numerical Analysis and
+orbital energies.                                                                 Scientiﬁc Computing, Simula Research Laboratory, 0164
+   The tting method converged with as little as 100 a.u. long                    Oslo, Norway
+trajectories in time for systems with sparse spectra.                           Håkon Emil Kristiansen − Hylleraas Centre for Quantum
+Convergence slows as spectral density increases, even leading                     Molecular Sciences, Department of Chemistry, University of
+to failure of convergence in some cases. The current version of                   Oslo, 0315 Oslo, Norway; orcid.org/0000-0001-9884-
+the tting method shows encouraging results for smaller                           1024
+                                                                       7772                                          https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                                              J. Chem. Theory Comput. 2023, 19, 7764−7775
+Journal of Chemical Theory and Computation                                                     pubs.acs.org/JCTC                                           Article
+
+   Lukas Konecny − Hylleraas Centre for Quantum Molecular                          Propagation of the Four-Component Dirac−Kohn−Sham Equation. J.
+     Sciences, Department of Chemistry, University of Tromsø�                      Chem. Theory Comput. 2015, 11, 980−991.
+     The Arctic University of Norway, N-9037 Tromsø, Norway;                         (9) Nascimento, D. R.; DePrince, A. E. A general time-domain
+     Center for Free Electron Laser, Max Planck Institute for the                  formulation of equation-of-motion coupled-cluster theory for linear
+                                                                                   spectroscopy. J. Chem. Phys. 2019, 151, No. 204107.
+     Structure and Dynamics of Matter Science, 22761 Hamburg,
+                                                                                     (10) Skeidsvoll, A. S.; Balbi, A.; Koch, H. Time-dependent coupled-
+     Germany; orcid.org/0000-0002-4073-7045                                        cluster theory for ultrafast transient-absorption spectroscopy. Phys.
+   Marius Kadek − Hylleraas Centre for Quantum Molecular                           Rev. A 2020, 102, No. 023115.
+     Sciences, Department of Chemistry, University of Tromsø�                        (11) Guandalini, A.; Cocchi, C.; Pittalis, S.; Ruini, A.; Rozzi, C. A.
+     The Arctic University of Norway, N-9037 Tromsø, Norway;                       Nonlinear light absorption in many-electron systems excited by an
+     Department of Physics, Northeastern University, Boston,                       instantaneous electric field: a non-perturbative approach. Phys. Chem.
+     Massachusetts 02115, United States                                            Chem. Phys. 2021, 23, 10059−10069.
+   Michal Repisky − Hylleraas Centre for Quantum Molecular                           (12) Moitra, T.; Konecny, L.; Kadek, M.; Rubio, A.; Repisky, M.
+     Sciences, Department of Chemistry, University of Tromsø�                      Accurate Relativistic Real-Time Time-Dependent Density Functional
+     The Arctic University of Norway, N-9037 Tromsø, Norway;                       Theory for Valence and Core Attosecond Transient Absorption
+     Department of Physical and Theoretical Chemistry, Faculty                     Spectroscopy. J. Phys. Chem. Lett. 2023, 14, 1714−1724.
+                                                                                     (13) The requirement of multiple rebuilds of the Hamiltonian matrix
+     of Natural Sciences, Comenius University, SK-84215
+                                                                                   per time step depends on the choice of algorithm and time step. Some
+     Bratislava, Slovakia; orcid.org/0000-0003-0776-4137                           authors report that self-consistency is not strictly necessary for RT-
+Complete contact information is available at:                                      TDDFT calculations with very small time steps, see ref 18.
+https://pubs.acs.org/10.1021/acs.jctc.3c00727                                        (14) Han, R.; Mattiat, J.; Luber, S. Automatic purpose-driven basis
+                                                                                   set truncation for time-dependent Hartree−Fock and density-
+Notes                                                                              functional theory. Nat. Commun. 2023, 14, 106.
+                                                                                     (15) Black, E. K. G.; Gilbert, A. T. B.; McKenzie, S. C.; Gill, P. M.
+The authors declare no competing nancial interest.
+                                                                                   W. Avoiding Negligible Shell Pairs and Quartets in Electronic
+
+■    ACKNOWLEDGMENTS
+This work was supported by the Research Council of Norway
+                                                                                   Structure Calculations. J. Phys. Chem. A 2023, 127, 842−850.
+                                                                                     (16) Konecny, L.; Kadek, M.; Komorovsky, S.; Ruud, K.; Repisky,
+                                                                                   M. Resolution-of-identity accelerated relativistic two- and four-
+through its Centres of Excellence scheme, project number                           component electron dynamics approach to chiroptical spectroscopies.
+262695, and its Mobility Grant scheme (project nos. 301864                         J. Chem. Phys. 2018, 149, No. 204104.
+                                                                                     (17) Yokojima, S.; Chen, G. Time domain localized-density-matrix
+and 314814). The simulations were performed on resources
+                                                                                   method. Chem. Phys. Lett. 1998, 292, 379−383.
+provided by Sigma2�the National Infrastructure for High                              (18) O’Rourke, C.; Bowler, D. R. Linear scaling density matrix real
+Performance Computing and Data Storage in Norway, Grant                            time TDDFT: Propagator unitarity and matrix truncation. J. Chem.
+No. NN4654K. T.B.P. acknowledges the support of the Centre                         Phys. 2015, 143, No. 102801.
+for Advanced Study in Oslo, Norway, which funded and hosted                          (19) Mandelshtam, V. A.; Taylor, H. S. Harmonic inversion of time
+the CAS research project Attosecond Quantum Dynamics                               signals and its applications. J. Chem. Phys. 1997, 107, 6756−6769.
+Beyond the Born−Oppenheimer Approximation during the                                 (20) Roy, R.; Sumpter, B.; Pfeffer, G.; Gray, S.; Noid, D. Novel
+academic year 2021−2022. In addition, this project received                        methods for spectral analysis. Phys. Rep. 1991, 205, 109−152.
+funding from the European Union’s Horizon 2020 research                              (21) Wall, M. R.; Neuhauser, D. Extraction, through filter-
+and innovation program under the Marie Skłodowska-Curie                            diagonalization, of general quantum eigenvalues or classical normal
+Grant Agreement No. 945478 (SASPRO2) and the Slovak                                mode frequencies from a small number of residues or a short-time
+                                                                                   segment of a signal. I. Theory and application to a quantum-dynamics
+Research and Development Agency (Grant No. APVV-21-
+                                                                                   model. J. Chem. Phys. 1995, 102, 8011−8022.
+0497).                                                                               (22) Bruner, A.; LaMaster, D.; Lopata, K. Accelerated Broadband
+
+■    REFERENCES
+ (1) Corkum, P. B.; Krausz, F. Attosecond science. Nat. Phys. 2007, 3,
+                                                                                   Spectra Using Transition Dipole Decomposition and Padé Approx-
+                                                                                   imants. J. Chem. Theory Comput. 2016, 12, 3741−3750.
+                                                                                     (23) Dral, P. O. Quantum Chemistry in the Age of Machine
+381−387.                                                                           Learning. J. Phys. Chem. Lett. 2020, 11, 2336−2347.
+ (2) Nisoli, M.; Decleva, P.; Calegari, F.; Palacios, A.; Martín, F.                 (24) Häse, F.; Fdez. Galván, I.; Aspuru-Guzik, A.; Lindh, R.; Vacher,
+Attosecond Electron Dynamics in Molecules. Chem. Rev. 2017, 117,                   M. How machine learning can assist the interpretation of ab initio
+10760−10825.                                                                       molecular dynamics simulations and conceptual understanding of
+ (3) Li, X.; Govind, N.; Isborn, C.; DePrince, A. E.; Lopata, K. Real-             chemistry. Chem. Sci. 2019, 10, 2298−2307.
+Time Time-Dependent Electronic Structure Theory. Chem. Rev.                          (25) Butler, K. T.; Davies, D. W.; Cartwright, H.; Isayev, O.; Walsh,
+2020, 120, 9951−9993.                                                              A. Machine learning for molecular and materials science. Nature 2018,
+ (4) Lode, A. U.; Lévêque, C.; Madsen, L. B.; Streltsov, A. I.; Alon, O.          559, 547−555.
+E. Multiconfigurational time-dependent Hartree approaches for                        (26) Kitchin, J. R. Machine learning in catalysis. Nat. Catal. 2018, 1,
+indistinguishable particles. Rev. Mod. Phys. 2020, 92, No. 011001.                 230−232.
+ (5) Sverdrup Ofstad, B.; Aurbakken, E.; Sigmundson Schøyen, Øy.;                    (27) Chen, W.-K.; Liu, X.-Y.; Fang, W.-H.; Dral, P. O.; Cui, G. Deep
+Kristiansen, H. E.; Kvaal, S.; Pedersen, T. B. Time-Dependent                      learning for nonadiabatic excited-state dynamics. J. Phys. Chem. Lett.
+Coupled-Cluster Theory. WIREs Comput. Mol. Sci. 2023, 13, e1666.                   2018, 9, 6702−6708.
+ (6) Olsen, J.; Jørgensen, P. Linear and nonlinear response functions                (28) Secor, M.; Soudackov, A. V.; Hammes-Schiffer, S. Artificial
+for an exact state and for an MCSCF state. J. Chem. Phys. 1985, 82,                neural networks as propagators in quantum dynamics. J. Phys. Chem.
+3235−3264.                                                                         Lett. 2021, 12, 10654−10662.
+ (7) Helgaker, T.; Coriani, S.; Jørgensen, P.; Kristensen, K.; Olsen, J.;            (29) Ullah, A.; Dral, P. O. One-shot trajectory learning of open
+Ruud, K. Recent Advances in Wave Function-Based Methods of                         quantum systems dynamics. J. Phys. Chem. Lett. 2022, 13, 6037−6041.
+Molecular-Property Calculations. Chem. Rev. 2012, 112, 543−631.                      (30) Xu, K.; Zhang, M.; Li, J.; Du, S. S.; Kawarabayashi, K.-i.;
+ (8) Repisky, M.; Konecny, L.; Kadek, M.; Komorovsky, S.; Malkin,                  Jegelka, S. How Neural Networks Extrapolate: From Feedforward to
+O. L.; Malkin, V. G.; Ruud, K. Excitation Energies from Real-Time                  Graph Neural Networks. arXiv Preprint, arXiv:2009.11848, 2020.
+
+                                                                            7773                                               https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                                                        J. Chem. Theory Comput. 2023, 19, 7764−7775
+Journal of Chemical Theory and Computation                                                    pubs.acs.org/JCTC                                           Article
+
+  (31) Oleinik, A. What are neural networks not good at? On artificial              (54) Pedregosa, F.; Varoquaux, G.; Gramfort, A.; Michel, V.;
+creativity. Big Data Soc. 2019, 6, No. 205395171983943.                           Thirion, B.; Grisel, O.; Blondel, M.; Prettenhofer, P.; Weiss, R.;
+  (32) Pinkus, A. Approximation theory of the MLP model in neural                 Dubourg, V.; Vanderplas, J.; Passos, A.; Cournapeau, D.; Brucher, M.;
+networks. Acta Numer. 1999, 8, 143−195.                                           Perrot, M.; Duchesnay, E. Scikit-learn: Machine Learning in Python. J.
+  (33) Runge, E.; Gross, E. K. Density-functional theory for time-                Mach. Learn. Res. 2011, 12, 2825−2830.
+dependent systems. Phys. Rev. Lett. 1984, 52, 997−1000.                             (55) Hastie, T.; Tibshirani, R.; Friedman, J. The Elements of
+  (34) van Leeuwen, R. Mapping from densities to potentials in time-              Statistical Learning: Data Mining, Inference, and Prediction; Springer
+dependent density-functional theory. Phys. Rev. Lett. 1999, 82, 3863−             New York: New York, 2009; pp 43−99.
+3866.                                                                               (56) Tibshirani, R. Regression Shrinkage and Selection via the Lasso.
+  (35) Theilhaber, J. Ab initio simulations of sodium using time-                 J. R. Statist. Soc. B 1996, 58, 267−288.
+dependent density-functional theory. Phys. Rev. B 1992, 46, 12990−                  (57) Ghosh, S.; Asher, J. C.; Gagliardi, L.; Cramer, C. J.; Govind, N.
+13003.                                                                            A semiempirical effective Hamiltonian based approach for analyzing
+  (36) Yabana, K.; Bertsch, G. F. Time-dependent local-density                    excited state wave functions and computing excited state absorption
+approximation in real time. Phys. Rev. B 1996, 54, 4484−4487.                     spectra using real-time dynamics. J. Chem. Phys. 2019, 150,
+  (37) Lopata, K.; Govind, N. Modeling Fast Electron Dynamics with                No. 104103.
+Real-Time Time-Dependent Density Functional Theory: Application                     (58) Virtanen, P.; Gommers, R.; Oliphant, T. E.; Haberland, M.;
+to Small Molecules and Chromophores. J. Chem. Theory Comput.                      Reddy, T.; Cournapeau, D.; Burovski, E.; Peterson, P.; Weckesser, W.;
+2011, 7, 1344−1355.                                                               Bright, J.; van der Walt, S. J.; Brett, M.; Wilson, J.; Millman, K. J.;
+  (38) Wibowo, M.; Irons, T. J.; Teale, A. M. Modeling Ultrafast                  Mayorov, N.; Nelson, A. R. J.; Jones, E.; Kern, R.; Larson, E.; Carey,
+Electron Dynamics in Strong Magnetic Fields Using Real-Time Time-                 C J; Polat, I.; Feng, Y.; Moore, E. W.; VanderPlas, J.; Laxalde, D.;
+Dependent Electronic Structure Methods. J. Chem. Theory Comput.                   Perktold, J.; Cimrman, R.; Henriksen, I.; Quintero, E. A.; Harris, C.
+2021, 17, 2137−2165.                                                              R.; Archibald, A. M.; Ribeiro, A. H.; Pedregosa, F.; van Mulbregt, P.;
+  (39) Provorse, M. R.; Isborn, C. M. Electron dynamics with real-                Vijaykumar, A.; Bardelli, A. P.; Rothberg, A.; Hilboll, A.; Kloeckner,
+time time-dependent density functional theory. Int. J. Quantum Chem.              A.; Scopatz, A.; Lee, A.; Rokem, A.; Woods, C. N.; Fulton, C.;
+2016, 116, 739−749.                                                               Masson, C.; Haggstrom, C.; Fitzgerald, C.; Nicholson, D. A.; Hagen,
+  (40) Li, X.; Smith, S. M.; Markevitch, A. N.; Romanov, D. A.; Levis,            D. R.; Pasechnik, D. V.; Olivetti, E.; Martin, E.; Wieser, E.; Silva, F.;
+R. J.; Schlegel, H. B. A time-dependent Hartree−Fock approach for                 Lenders, F.; Wilhelm, F.; Young, G.; Price, G. A.; Ingold, G.-L.; Allen,
+studying the electronic optical response of molecules in intense fields.
+                                                                                  G. E.; Lee, G. R.; Audren, H.; Probst, I.; Dietrich, J. P.; Silterra, J.;
+Phys. Chem. Chem. Phys. 2005, 7, 233−239.
+                                                                                  Webber, J. T; Slavic, J.; Nothman, J.; Buchner, J.; Kulick, J.;
+  (41) Foresman, J. B.; Head-Gordon, M.; Pople, J. A.; Frisch, M. J.
+                                                                                  Schonberger, J. L.; de Miranda Cardoso, J. V.; Reimer, J.; Harrington,
+Toward a systematic molecular orbital theory for excited states. J.
+                                                                                  J.; Rodriguez, J. L. C.; Nunez-Iglesias, J.; Kuczynski, J.; Tritz, K.;
+Phys. Chem. 1992, 96, 135−149.
+                                                                                  Thoma, M.; Newville, M.; Kummerer, M.; Bolingbroke, M.; Tartre,
+  (42) Rohringer, N.; Gordon, A.; Santra, R. Configuration-
+interaction-based time-dependent orbital approach for ab initio                   M.; Pak, M.; Smith, N. J.; Nowaczyk, N.; Shebanov, N.; Pavlyk, O.;
+treatment of electronic dynamics in a strong optical laser field. Phys.           Brodtkorb, P. A.; Lee, P.; McGibbon, R. T.; Feldbauer, R.; Lewis, S.;
+Rev. A 2006, 74, 043420.                                                          Tygier, S.; Sievert, S.; Vigna, S.; Peterson, S.; More, S.; Pudlik, T.;
+  (43) Greenman, L.; Ho, P. J.; Pabst, S.; Kamarchik, E.; Mazziotti, D.           Oshima, T.; Pingel, T. J.; Robitaille, T. P.; Spura, T.; Jones, T. R.;
+A.; Santra, R. Implementation of the time-dependent configuration-                Cera, T.; Leslie, T.; Zito, T.; Krauss, T.; Upadhyay, U.; Halchenko, Y.
+interaction singles method for atomic strong-field processes. Phys. Rev.          O.; Vazquez-Baeza, Y. SciPy 1.0 Contributors SciPy 1.0: Fundamental
+A 2010, 82, 023406.                                                               Algorithms for Scientific Computing in Python. Nat. Methods 2020,
+  (44) Helgaker, T.; Jørgensen, P.; Olsen, J. Molecular Electronic-               17, 261−272.
+Structure Theory; John Wiley & Sons: Chichester, 2000.                              (59) Repisky, M.; Komorovsky, S.; Kadek, M.; Konecny, L.;
+  (45) Griths, D. J. Introduction to Quantum Mechanics, 2nd ed.;                 Ekström, U.; Malkin, E.; Kaupp, M.; Ruud, K.; Malkina, O. L.;
+Cambridge University Press: Cambridge, 2017.                                      Malkin, V. G. ReSpect: Relativistic spectroscopy DFT program
+  (46) Tannor, D. J. Introduction to Quantum Mechanics; University                package. J. Chem. Phys. 2020, 152, No. 184101.
+Science Books: Sausalito, CA, 2007; pp 411−412.                                     (60) Aurbakken, E.; Kristiansen, H. E.; Kvaal, S.; Ofstad, B. S.;
+  (47) Norman, P.; Bishop, D. M.; Jo/rgen Aa. Jensen, H.;                         Pedersen, T. B.; Schøyen, Ø. S. HyQD. https://github.com/HyQD
+Oddershede, J. Near-resonant absorption in the time-dependent                     (accessed 2023−02−04).
+self-consistent field and multiconfigurational self-consistent field                (61) Hairer, E.; Wanner, G.; Lubich, C. Geometric Numerical
+approximations. J. Chem. Phys. 2001, 115, 10323−10334.                            Integration, 2nd ed.; Springer: Berlin, Heidelberg, 2006.
+  (48) Hauge, E. S. Extrapolating the Electric Dipole Moment. M.Sc.                 (62) Pedersen, T. B.; Kvaal, S. Symplectic integration and physical
+Thesis, University of Oslo, 2021.                                                 interpretation of time-dependent coupled-cluster theory. J. Chem.
+  (49) Harris, C. R.; Millman, K. J.; van der Walt, S. J.; Gommers, R.;           Phys. 2019, 150, No. 144106.
+Virtanen, P.; Cournapeau, D.; Wieser, E.; Taylor, J.; Berg, S.; Smith,              (63) Dunning, T. H., Jr. Gaussian basis sets for use in correlated
+N. J.; Kern, R.; Picus, M.; Hoyer, S.; van Kerkwijk, M. H.; Brett, M.;            molecular calculations. I. The atoms boron through neon and
+Haldane, A.; del Río, J. F.; Wiebe, M.; Peterson, P.; Gérard-Marchant,            hydrogen. J. Chem. Phys. 1989, 90, 1007−1023.
+P.; Sheppard, K.; Reddy, T.; Weckesser, W.; Abbasi, H.; Gohlke, C.;                 (64) Kendall, R. A.; Dunning, T. H., Jr; Harrison, R. J. Electron
+Oliphant, T. E. Array programming with NumPy. Nature 2020, 585,                   affinities of the first-row atoms revisited. Systematic basis sets and
+357−362.                                                                          wave functions. J. Chem. Phys. 1992, 96, 6796−6806.
+  (50) Horn, R. A.; Johnson, C. R. Matrix Analysis; Cambridge                       (65) Woon, D. E.; Dunning, T. H., Jr Gaussian basis sets for use in
+University Press, 1985; p 257−342.                                                correlated molecular calculations. III. The atoms aluminum through
+  (51) Mattiat, J.; Luber, S. Efficient calculation of (resonance) Raman          argon. J. Chem. Phys. 1993, 98, 1358−1371.
+spectra and excitation profiles with real-time propagation. J. Chem.                (66) Slater, J. C. A simplification of the Hartree-Fock method. Phys.
+Phys. 2018, 149, No. 174108.                                                      Rev. 1951, 81, 385.
+  (52) Hastie, T.; Tibshirani, R.; Friedman, J. The Elements of                     (67) Perdew, J. P.; Burke, K.; Ernzerhof, M. Generalized Gradient
+Statistical Learning: Data Mining, Inference, and Prediction; Springer            Approximation Made Simple. Phys. Rev. Lett. 1996, 77, 3865−3868.
+New York: New York, NY, 2009; pp 509−510.                                           (68) Perdew, J. P.; Burke, K.; Ernzerhof, M. Generalized Gradient
+  (53) Kaufman, L.; Rousseeuw, P. J. Finding Groups in Data. An                   Approximation Made Simple [Phys. Rev. Lett. 77, 3865 (1996)].
+Introduction to Cluster Analysis; John Wiley & Sons: Hoboken, 2005.               Phys. Rev. Lett. 1997, 78, 1396−1396.
+
+                                                                           7774                                               https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                                                       J. Chem. Theory Comput. 2023, 19, 7764−7775
+Journal of Chemical Theory and Computation                               pubs.acs.org/JCTC                                      Article
+
+ (69) Adamo, C.; Barone, V. Toward reliable density functional
+methods without adjustable parameters: The PBE0 model. J. Chem.
+Phys. 1999, 110, 6158−6170.
+ (70) Cooper, B. C.; Koulias, L. N.; Nascimento, D. R.; Li, X.;
+DePrince, A. E. I. Short Iterative Lanczos Integration in Time-
+Dependent Equation-of-Motion Coupled-Cluster Theory. J. Phys.
+Chem. A 2021, 125, 5438−5447.
+
+
+
+
+                                                                  7775                              https://doi.org/10.1021/acs.jctc.3c00727
+                                                                                             J. Chem. Theory Comput. 2023, 19, 7764−7775
+

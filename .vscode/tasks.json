@@ -1,0 +1,145 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "kill_stuck_terminals",
+			"type": "shell",
+			"command": "pkill -9 -f nano || pkill -9 -f less || reset"
+		},
+		{
+			"label": "extract_all_peaks",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python scripts/extract_peaks.py"
+		},
+		{
+			"label": "train_model",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python train/train.py --epochs 20"
+		},
+		{
+			"label": "train_model_2",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python train/train.py --epochs 100"
+		},
+		{
+			"label": "train_module",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 50"
+		},
+		{
+			"label": "train_module",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 30"
+		},
+		{
+			"label": "train_module",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 50"
+		},
+		{
+			"label": "check_init",
+			"type": "shell",
+			"command": "cat models/mace_net.py | grep \"def __init\" -A 5"
+		},
+		{
+			"label": "run_train",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 50"
+		},
+		{
+			"label": "check_graph_builder",
+			"type": "shell",
+			"command": "cat models/molecule_graph.py | grep build_molecule_graph -A 25"
+		},
+		{
+			"label": "cat_graph",
+			"type": "shell",
+			"command": "cat models/molecule_graph.py"
+		},
+		{
+			"label": "train",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 10"
+		},
+		{
+			"label": "check_forward",
+			"type": "shell",
+			"command": "cat models/mace_net.py | grep \"def forward\" -A 5"
+		},
+		{
+			"label": "run_train",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 5"
+		},
+		{
+			"label": "check_mace",
+			"type": "shell",
+			"command": "cat models/mace_net.py | grep global_add_pool -B 5 -A 20"
+		},
+		{
+			"label": "train_again",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 3"
+		},
+		{
+			"label": "cat_loss",
+			"type": "shell",
+			"command": "cat train/losses.py | grep \"cost_matrix\\[i, j\\] =\" -B 3 -A 3"
+		},
+		{
+			"label": "train_again_2",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 3"
+		},
+		{
+			"label": "cat_losses_2",
+			"type": "shell",
+			"command": "cat train/losses.py | head -n 35"
+		},
+		{
+			"label": "train_again_3",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 3"
+		},
+		{
+			"label": "grep",
+			"type": "shell",
+			"command": "cat train/losses.py | grep y_freq"
+		},
+		{
+			"label": "train_4",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 3 --batch_size 1"
+		},
+		{
+			"label": "run_again_5",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 3 --batch_size 1"
+		},
+		{
+			"label": "cat_t_loss",
+			"type": "shell",
+			"command": "cat train/losses.py | head -n 30"
+		},
+		{
+			"label": "train_finally",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 5 --batch_size 1"
+		},
+		{
+			"label": "grep",
+			"type": "shell",
+			"command": "cat train/losses.py | grep \"return\""
+		},
+		{
+			"label": "grep2",
+			"type": "shell",
+			"command": "cat train/losses.py | grep \"return\""
+		},
+		{
+			"label": "run_train_6",
+			"type": "shell",
+			"command": "/home/user/Desktop/electron-gnn/.venv/bin/python -m train.train --epochs 5 --batch_size 1"
+		}
+	]
+}

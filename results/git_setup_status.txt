@@ -1,0 +1,2 @@
+]633;E;[[ -d .git ]];a911049f-27b8-4066-bdf6-5aae08d203f9]633;Cgit_repo=yes
+remote_origin=https://github.com/Galabavamsi/Electron-GNN.git

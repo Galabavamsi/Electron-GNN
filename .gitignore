@@ -1,0 +1,14 @@
+# Python virtual environment
+.venv/
+
+# Python cache artifacts
+__pycache__/
+*.py[cod]
+
+# OS/editor noise
+.DS_Store
+*.swp
+
+# Keep project data tracked
+!data/
+!data/**

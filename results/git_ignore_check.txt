@@ -1,0 +1,18 @@
+]633;E;echo "ignored_venv=$(git check-ignore .venv 2> /dev/null || echo no)";a911049f-27b8-4066-bdf6-5aae08d203f9]633;Cignored_venv=.venv
+ignored_data=no
+status_head:
+?? .gitignore
+?? .vscode/
+?? IMPLEMENTATION_PLAN.md
+?? README.md
+?? checkpoints/
+?? dashboard/
+?? data/
+?? docs/
+?? lib/
+?? models/
+?? research/
+?? results/
+?? scripts/
+?? train/
+?? utils/
