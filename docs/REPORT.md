@@ -2,7 +2,8 @@
 **Project**: E(3)-Equivariant Graph Neural Networks for RT-TDDFT Approximation  
 **Task Overview**: Final End-to-End Pipeline Completion and Model Evaluation
 
-> Update: The latest exhaustive V2 report is available at `docs/REPORT_V2_ARCHITECTURE_AND_SCALING.md`.
+> Update: The latest exhaustive V3 report is available at `docs/REPORT_V3_TWO_TOWER_HYBRID.md`.
+> V2 report remains available at `docs/REPORT_V2_ARCHITECTURE_AND_SCALING.md`.
 > This file remains as the original earlier-version report.
 
 ---

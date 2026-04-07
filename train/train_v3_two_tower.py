@@ -48,6 +48,33 @@ def load_partial_state_dict(model, ckpt_path, device):
     return len(compatible), len(current)
 
 
+def set_backbone_trainable(model, trainable):
+    """
+    Toggle trainability of the legacy V1 backbone while keeping output heads trainable.
+    """
+    for name, param in model.named_parameters():
+        if name.startswith("head_freq") or name.startswith("head_prob"):
+            param.requires_grad = True
+        else:
+            param.requires_grad = bool(trainable)
+
+
+def build_optimizer(params, lr):
+    trainable = [p for p in params if p.requires_grad]
+    return optim.AdamW(trainable, lr=lr, weight_decay=1e-4)
+
+
+def infer_v1_kmax_from_checkpoint(ckpt_path):
+    if not ckpt_path or not os.path.exists(ckpt_path):
+        return None
+    state = torch.load(ckpt_path, map_location="cpu", weights_only=True)
+    if "head_freq.2.bias" in state:
+        return int(state["head_freq.2.bias"].numel())
+    if "head_freq.2.weight" in state:
+        return int(state["head_freq.2.weight"].shape[0])
+    return None
+
+
 def split_targets_by_graph(data_batch, batch_size, device):
     if hasattr(data_batch, "num_peaks"):
         counts = data_batch.num_peaks.reshape(-1).tolist()
@@ -111,16 +138,45 @@ def frequency_tower_loss(pred_dict, data_batch):
     return total_loss / batch_size
 
 
-def train_freq_epoch(model, dataloader, optimizer, device, grad_clip=1.0):
+def train_freq_epoch(
+    model,
+    dataloader,
+    optimizer,
+    device,
+    grad_clip=1.0,
+    teacher_model=None,
+    teacher_lambda=0.0,
+    teacher_slots=0,
+):
     model.train()
     epoch_loss = 0.0
+    epoch_base = 0.0
+    epoch_teacher = 0.0
 
     for batch in tqdm(dataloader, desc="Train Freq Tower"):
         batch = batch.to(device)
         optimizer.zero_grad()
 
         pred = model(batch)
-        loss = frequency_tower_loss(pred, batch)
+        base_loss = frequency_tower_loss(pred, batch)
+
+        teacher_loss = base_loss.new_tensor(0.0)
+        if teacher_model is not None and teacher_lambda > 0.0 and teacher_slots > 0:
+            with torch.no_grad():
+                teacher_pred = teacher_model(batch)
+
+            slots = min(teacher_slots, pred["freq"].shape[1], teacher_pred["freq"].shape[1])
+            if slots > 0:
+                teacher_loss = (
+                    F.smooth_l1_loss(
+                        pred["freq"][:, :slots],
+                        teacher_pred["freq"][:, :slots],
+                        beta=0.02,
+                    )
+                    + 0.25 * F.mse_loss(pred["prob"][:, :slots], teacher_pred["prob"][:, :slots])
+                )
+
+        loss = base_loss + teacher_lambda * teacher_loss
 
         loss.backward()
         if grad_clip is not None and grad_clip > 0:
@@ -128,8 +184,11 @@ def train_freq_epoch(model, dataloader, optimizer, device, grad_clip=1.0):
         optimizer.step()
 
         epoch_loss += loss.item()
+        epoch_base += base_loss.item()
+        epoch_teacher += teacher_loss.item()
 
-    return epoch_loss / len(dataloader)
+    n = len(dataloader)
+    return epoch_loss / n, epoch_base / n, epoch_teacher / n
 
 
 def eval_freq_epoch(model, dataloader, device):
@@ -202,6 +261,12 @@ def main():
     parser.add_argument("--k_max_freq", type=int, default=64)
     parser.add_argument("--hidden_dim_freq", type=int, default=64)
     parser.add_argument("--init_freq_ckpt", type=str, default="checkpoints/best_model_v1.pth")
+    parser.add_argument("--freq_warmup_epochs", type=int, default=5)
+    parser.add_argument("--freq_freeze_backbone", type=int, default=1)
+    parser.add_argument("--freq_early_stop_patience", type=int, default=12)
+    parser.add_argument("--freq_min_delta", type=float, default=1e-3)
+    parser.add_argument("--freq_teacher_lambda", type=float, default=0.5)
+    parser.add_argument("--freq_teacher_ckpt", type=str, default="checkpoints/best_model_v1.pth")
 
     parser.add_argument("--epochs_amp", type=int, default=60)
     parser.add_argument("--lr_amp", type=float, default=2e-4)
@@ -243,30 +308,82 @@ def main():
         if loaded > 0:
             print(f"Loaded {loaded}/{total} compatible params into freq tower from {args.init_freq_ckpt}")
 
-        optimizer_f = optim.AdamW(freq_model.parameters(), lr=args.lr_freq, weight_decay=1e-4)
-        scheduler_f = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer_f, mode="min", factor=0.5, patience=8
-        )
+        teacher_model = None
+        teacher_slots = 0
+        teacher_kmax = infer_v1_kmax_from_checkpoint(args.freq_teacher_ckpt)
+        if teacher_kmax is not None and os.path.exists(args.freq_teacher_ckpt):
+            teacher_model = SpectralEquivariantGNNV1(
+                node_features_in=5,
+                hidden_dim=args.hidden_dim_freq,
+                K_max=teacher_kmax,
+            ).to(device)
+            load_partial_state_dict(teacher_model, args.freq_teacher_ckpt, device)
+            teacher_model.eval()
+            for p in teacher_model.parameters():
+                p.requires_grad = False
+            teacher_slots = min(args.k_max_freq, teacher_kmax)
+            print(
+                f"Using teacher regularization from {args.freq_teacher_ckpt} "
+                f"for first {teacher_slots} slots (lambda={args.freq_teacher_lambda})."
+            )
+
+        warmup_epochs = min(args.freq_warmup_epochs, args.epochs_freq)
+        freeze_backbone = bool(args.freq_freeze_backbone)
+        unfrozen = False
+        if freeze_backbone and warmup_epochs > 0:
+            set_backbone_trainable(freq_model, trainable=False)
+            print(f"Frequency tower warmup: freezing backbone for {warmup_epochs} epochs.")
+
+        optimizer_f = build_optimizer(freq_model.parameters(), lr=args.lr_freq)
+        scheduler_f = optim.lr_scheduler.ReduceLROnPlateau(optimizer_f, mode="min", factor=0.5, patience=8)
 
         best_freq = float("inf")
+        no_improve = 0
         for epoch in range(1, args.epochs_freq + 1):
             print(f"\n[Freq Tower] Epoch {epoch}/{args.epochs_freq}")
-            train_loss = train_freq_epoch(
+
+            if freeze_backbone and (not unfrozen) and epoch == warmup_epochs + 1:
+                set_backbone_trainable(freq_model, trainable=True)
+                optimizer_f = build_optimizer(freq_model.parameters(), lr=args.lr_freq)
+                scheduler_f = optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer_f, mode="min", factor=0.5, patience=8
+                )
+                unfrozen = True
+                print("Unfroze frequency tower backbone after warmup.")
+
+            train_total, train_base, train_teacher = train_freq_epoch(
                 freq_model,
                 train_loader,
                 optimizer_f,
                 device,
                 grad_clip=args.grad_clip,
+                teacher_model=teacher_model,
+                teacher_lambda=args.freq_teacher_lambda,
+                teacher_slots=teacher_slots,
             )
             val_loss = eval_freq_epoch(freq_model, val_loader, device)
             scheduler_f.step(val_loss)
 
-            print(f"Freq tower loss - train: {train_loss:.4f}, val: {val_loss:.4f}")
+            print(
+                f"Freq tower losses - train(total/base/teacher): "
+                f"{train_total:.4f}/{train_base:.4f}/{train_teacher:.4f} "
+                f"val: {val_loss:.4f}"
+            )
 
-            if val_loss < best_freq:
+            if val_loss < (best_freq - args.freq_min_delta):
                 best_freq = val_loss
                 torch.save(freq_model.state_dict(), freq_ckpt_out)
                 print(f"Saved best freq tower: {freq_ckpt_out} (val={best_freq:.4f})")
+                no_improve = 0
+            else:
+                no_improve += 1
+
+            if no_improve >= args.freq_early_stop_patience:
+                print(
+                    f"Early stopping frequency tower after {no_improve} non-improving epochs "
+                    f"(patience={args.freq_early_stop_patience})."
+                )
+                break
 
     if args.epochs_amp > 0:
         print("\n=== Training Amplitude Tower (V3) ===")

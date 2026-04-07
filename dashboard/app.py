@@ -6,6 +6,7 @@ import os
 import torch
 import glob
 import re
+from scipy.optimize import linear_sum_assignment
 
 # Add root to path so we can import utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -99,8 +100,7 @@ def load_datasets():
     return datasets
 
 # HELPER: Get Predictions
-def get_predictions(models, dataset_name, mode="V2 single tower"):
-    # Actually build a proper batch using the dataset class and a dataloader
+def _prepare_graph_and_truth(dataset_name):
     data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'processed'))
     dataset = SpectrumDataset(data_dir)
     
@@ -119,6 +119,12 @@ def get_predictions(models, dataset_name, mode="V2 single tower"):
     # We must patch the batch attribute since we aren't using a DataLoader
     graph_data.batch = torch.zeros(graph_data.num_nodes, dtype=torch.long)
     graph_data.y_freq_batch = torch.zeros(graph_data.y_freq.shape[0], dtype=torch.long)
+    true_w = graph_data.y_freq.detach().cpu().numpy()
+    true_b = np.abs(graph_data.y_amp.detach().cpu().numpy())
+    return graph_data, true_w, true_b
+
+
+def _predict_from_graph(models, graph_data, mode="V2 single tower"):
     amp_model = models["amp_model"]
     freq_model = models["freq_model"]
     device = models["device"]
@@ -126,7 +132,13 @@ def get_predictions(models, dataset_name, mode="V2 single tower"):
     
     with torch.no_grad():
         amp_pred = amp_model(graph_data)
-        if mode == "V3 hybrid two-tower" and freq_model is not None:
+        if mode == "V1 frequency only" and freq_model is not None:
+            freq_pred = freq_model(graph_data)
+            dec = decode_peak_set(freq_pred, prob_threshold=0.65, fallback_top_k=5)
+            pred_w = dec["freq"]
+            pred_b = dec["amp"]
+            pred_probs = dec["prob"]
+        elif mode == "V3 hybrid two-tower" and freq_model is not None:
             freq_pred = freq_model(graph_data)
             pred_w, pred_b, pred_probs = combine_two_tower_predictions(
                 freq_pred,
@@ -139,12 +151,64 @@ def get_predictions(models, dataset_name, mode="V2 single tower"):
             pred_w = dec["freq"]
             pred_b = dec["amp"]
             pred_probs = dec["prob"]
-    
-    # True values
-    true_w = graph_data.y_freq.detach().cpu().numpy()
-    true_b = np.abs(graph_data.y_amp.detach().cpu().numpy())
+
+    return pred_w, pred_b, pred_probs
+
+
+def _spectrum_from_peaks(freqs, amps, omega_grid, gamma=0.015):
+    spec = np.zeros_like(omega_grid)
+    for w_k, b_k in zip(freqs, amps):
+        spec += b_k * (gamma / ((omega_grid - w_k) ** 2 + gamma**2))
+    return spec
+
+
+def _matched_metrics(pred_w, pred_b, true_w, true_b):
+    if len(pred_w) == 0 or len(true_w) == 0:
+        return np.nan, np.nan, 0.0
+
+    cost = 10.0 * np.abs(pred_w[:, None] - true_w[None, :]) + np.abs(pred_b[:, None] - true_b[None, :])
+    pred_idx, true_idx = linear_sum_assignment(cost)
+    f_mae = float(np.mean(np.abs(pred_w[pred_idx] - true_w[true_idx])))
+    b_mae = float(np.mean(np.abs(pred_b[pred_idx] - true_b[true_idx])))
+
+    omega = np.linspace(0.01, 1.5, 1000)
+    spec_t = _spectrum_from_peaks(true_w, true_b, omega)
+    spec_p = _spectrum_from_peaks(pred_w, pred_b, omega)
+    overlap = calc_spectral_overlap_score(spec_t, spec_p)
+    return f_mae, b_mae, overlap
+
+
+def get_predictions(models, dataset_name, mode="V2 single tower"):
+    graph_data, true_w, true_b = _prepare_graph_and_truth(dataset_name)
+    if graph_data is None:
+        return None, None, None
+
+    pred_w, pred_b, pred_probs = _predict_from_graph(models, graph_data, mode=mode)
     
     return (pred_w, pred_b), (true_w, true_b), pred_probs
+
+
+def get_comparison_predictions(models, dataset_name):
+    graph_data, true_w, true_b = _prepare_graph_and_truth(dataset_name)
+    if graph_data is None:
+        return None
+
+    v2_w, v2_b, v2_p = _predict_from_graph(models, graph_data, mode="V2 single tower")
+
+    out = {
+        "true": (true_w, true_b),
+        "V2": (v2_w, v2_b, v2_p),
+        "V1": None,
+        "Hybrid": None,
+    }
+
+    if models["freq_model"] is not None:
+        v1_w, v1_b, v1_p = _predict_from_graph(models, graph_data, mode="V1 frequency only")
+        hy_w, hy_b, hy_p = _predict_from_graph(models, graph_data, mode="V3 hybrid two-tower")
+        out["V1"] = (v1_w, v1_b, v1_p)
+        out["Hybrid"] = (hy_w, hy_b, hy_p)
+
+    return out
 
 
 if app_mode == "Overview & Theory":
@@ -244,6 +308,8 @@ elif app_mode == "3. GNN Inference & Spectra":
         
     selected_mol = st.selectbox("Select Molecule for Evaluation", list(datasets.keys()))
         
+    show_comparison = st.checkbox("Show V1 vs V2 vs Hybrid comparison", value=True)
+
     if st.button("Predict Spectrum"):
         with st.spinner("Running E(3)-Equivariant GNN inference..."):
             try:
@@ -295,6 +361,56 @@ elif app_mode == "3. GNN Inference & Spectra":
                     "Confidence": np.round(probs[:15] * 100, 2)
                 })
                 st.table(df)
+
+                if show_comparison:
+                    st.subheader("Model Comparison: V1 vs V2 vs Hybrid")
+                    comp = get_comparison_predictions(models, selected_mol)
+                    if comp is None:
+                        st.warning("Comparison data unavailable.")
+                    else:
+                        true_w_c, true_b_c = comp["true"]
+                        omega_cmp = np.linspace(0.01, 1.5, 1000)
+                        spec_true = _spectrum_from_peaks(true_w_c, true_b_c, omega_cmp)
+
+                        rows = []
+                        plot_items = []
+                        for name in ["V1", "V2", "Hybrid"]:
+                            item = comp.get(name)
+                            if item is None:
+                                continue
+                            pw, pb, _ = item
+                            f_mae, b_mae, overlap = _matched_metrics(pw, pb, true_w_c, true_b_c)
+                            rows.append(
+                                {
+                                    "Model": name,
+                                    "Pred Peaks": len(pw),
+                                    "True Peaks": len(true_w_c),
+                                    "Freq MAE": f_mae,
+                                    "Amp MAE": b_mae,
+                                    "Overlap": overlap,
+                                }
+                            )
+                            plot_items.append((name, pw, pb))
+
+                        import pandas as pd
+                        if rows:
+                            st.dataframe(pd.DataFrame(rows))
+
+                        if plot_items:
+                            ncols = len(plot_items)
+                            fig_cmp, axes = plt.subplots(1, ncols, figsize=(6 * ncols, 4), sharey=True)
+                            if ncols == 1:
+                                axes = [axes]
+                            for ax, (name, pw, pb) in zip(axes, plot_items):
+                                spec_pred = _spectrum_from_peaks(pw, pb, omega_cmp)
+                                ax.plot(omega_cmp, spec_true, color="black", linewidth=2, label="True")
+                                ax.plot(omega_cmp, spec_pred, color="tab:blue", linestyle="--", linewidth=2, label=name)
+                                ax.set_title(name)
+                                ax.set_xlabel(r"Frequency $\omega$ (a.u.)")
+                                ax.grid(True, linestyle="--", alpha=0.3)
+                            axes[0].set_ylabel("Intensity")
+                            axes[0].legend()
+                            st.pyplot(fig_cmp)
             except Exception as e:
                 import traceback
                 st.error(f"Inference error: {traceback.format_exc()}")
