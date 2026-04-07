@@ -17,7 +17,7 @@ class SpectrumDataset(Dataset):
     def __init__(self, processed_dir):
         super().__init__(root=None, transform=None, pre_transform=None)
         self.data_dir_path = processed_dir
-        self.data_files = glob.glob(os.path.join(processed_dir, "*.pt"))
+        self.data_files = sorted(glob.glob(os.path.join(processed_dir, "*.pt")) )
         if not self.data_files:
             print(f"Warning: No processed .pt files found in {processed_dir}")
 
@@ -39,10 +39,11 @@ class SpectrumDataset(Dataset):
         # Append target variables to the PyG Data object
         graph_data.y_freq = data_dict["frequencies"]  # Shape: (K_true,)
         graph_data.y_amp = data_dict["amplitudes_x"]  # Shape: (K_true,)
+        # Track per-graph target size so batched losses can split flattened targets safely.
+        graph_data.num_peaks = torch.tensor([graph_data.y_freq.numel()], dtype=torch.long)
         
-        # Note: PyTorch Geometric will automatically collate these variable-length
-        # 1D tensors into a single flat tensor across the batch and provide a 
-        # 'y_freq_batch' assignment vector to split them back during loss calculation.
+        # PyTorch Geometric collates variable-length tensors into flat vectors.
+        # We store num_peaks so losses can split targets per graph robustly.
         return graph_data
 
 def build_dataloader(processed_dir, batch_size=1, shuffle=True):

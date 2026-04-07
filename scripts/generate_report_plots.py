@@ -11,14 +11,15 @@ from utils.model_diagnostics import plot_predict_vs_real_parity
 
 os.makedirs('docs/assets/report', exist_ok=True)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = SpectralEquivariantGNN(node_features_in=5, K_max=50)
+model = SpectralEquivariantGNN(node_features_in=5, K_max=64)
 ckpt = 'checkpoints/best_model.pth'
 
 if not os.path.exists(ckpt):
     print(f"No checkpoint found at {ckpt}")
     sys.exit(1)
 
-model.load_state_dict(torch.load(ckpt, map_location=device, weights_only=True))
+state_dict = torch.load(ckpt, map_location=device, weights_only=True)
+model.load_state_dict(state_dict, strict=False)
 model.to(device)
 model.eval()
 
@@ -58,16 +59,24 @@ def process_molecule(name_filter):
         pred_b_all = np.linalg.norm(amp_np, axis=1)
     else:
         pred_b_all = np.abs(amp_np)
-        
-    mask = probs > 0.65
-    if np.count_nonzero(mask) == 0:
-        top_k = min(5, probs.shape[0])
+
+    count_t = pred_dict.get("count")
+    if count_t is not None:
+        count_val = float(count_t.squeeze(0).detach().cpu().item())
+        top_k = int(np.clip(np.rint(count_val), 1, probs.shape[0]))
         top_idx = np.argsort(probs)[-top_k:]
         pred_w = pred_w_all[top_idx]
         pred_b = pred_b_all[top_idx]
     else:
-        pred_w = pred_w_all[mask]
-        pred_b = pred_b_all[mask]
+        mask = probs > 0.65
+        if np.count_nonzero(mask) == 0:
+            top_k = min(5, probs.shape[0])
+            top_idx = np.argsort(probs)[-top_k:]
+            pred_w = pred_w_all[top_idx]
+            pred_b = pred_b_all[top_idx]
+        else:
+            pred_w = pred_w_all[mask]
+            pred_b = pred_b_all[mask]
         
     true_w = graph_data.y_freq.detach().cpu().numpy()
     true_b = np.abs(graph_data.y_amp.detach().cpu().numpy())
