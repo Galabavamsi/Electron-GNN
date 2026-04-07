@@ -34,24 +34,88 @@ inference_mode = st.sidebar.selectbox(
     ["V2 single tower", "V3 hybrid two-tower"],
 )
 
+
+def _spectrum_from_peaks(freqs, amps, omega_grid, gamma=0.015):
+    spec = np.zeros_like(omega_grid)
+    for w_k, b_k in zip(freqs, amps):
+        spec += b_k * (gamma / ((omega_grid - w_k) ** 2 + gamma**2))
+    return spec
+
+
+def _prepare_graph_for_model(graph_data, device):
+    graph_data.batch = torch.zeros(graph_data.num_nodes, dtype=torch.long)
+    graph_data.y_freq_batch = torch.zeros(graph_data.y_freq.shape[0], dtype=torch.long)
+    return graph_data.to(device)
+
+
+def _score_amp_checkpoint(model, device, data_dir):
+    if not os.path.exists(data_dir):
+        return -1e9
+
+    dataset = SpectrumDataset(data_dir)
+    if len(dataset) == 0:
+        return -1e9
+
+    scores = []
+    omega = np.linspace(0.01, 1.5, 600)
+    model.eval()
+
+    with torch.no_grad():
+        for idx in range(len(dataset)):
+            graph_data = _prepare_graph_for_model(dataset[idx], device)
+            pred = model(graph_data)
+            dec = decode_peak_set(pred, prob_threshold=0.65, fallback_top_k=5)
+
+            pred_w = dec["freq"]
+            pred_b = dec["amp"]
+            true_w = graph_data.y_freq.detach().cpu().numpy()
+            true_b = np.abs(graph_data.y_amp.detach().cpu().numpy())
+
+            spec_t = _spectrum_from_peaks(true_w, true_b, omega)
+            spec_p = _spectrum_from_peaks(pred_w, pred_b, omega)
+            overlap = float(calc_spectral_overlap_score(spec_t, spec_p))
+            count_penalty = abs(len(pred_w) - len(true_w)) / max(1, len(true_w))
+            scores.append(overlap - 0.25 * count_penalty)
+
+    return float(np.mean(scores)) if scores else -1e9
+
 # HELPER: Load trained models (V2 amp tower + optional V1/V3 freq tower)
 @st.cache_resource
 def load_models():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    amp_model = SpectralEquivariantGNN(node_features_in=5, K_max=64)
+    amp_model = None
     amp_ckpt = None
+    amp_score_map = {}
     amp_candidates = [
-        os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'v3_amp_tower.pth')),
         os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'best_model.pth')),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'v3_amp_tower.pth')),
     ]
+
+    data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'processed'))
+    best_score = -1e9
     for ckpt_path in amp_candidates:
-        if os.path.exists(ckpt_path):
-            state_dict = torch.load(ckpt_path, map_location=device, weights_only=True)
-            amp_model.load_state_dict(state_dict, strict=False)
+        if not os.path.exists(ckpt_path):
+            continue
+
+        candidate_model = SpectralEquivariantGNN(node_features_in=5, K_max=64)
+        state_dict = torch.load(ckpt_path, map_location=device, weights_only=True)
+        candidate_model.load_state_dict(state_dict, strict=False)
+        candidate_model = candidate_model.to(device)
+        candidate_model.eval()
+
+        score = _score_amp_checkpoint(candidate_model, device, data_dir)
+        amp_score_map[ckpt_path] = score
+
+        if score > best_score:
+            best_score = score
+            amp_model = candidate_model
             amp_ckpt = ckpt_path
-            break
-    amp_model = amp_model.to(device)
+
+    if amp_model is None:
+        amp_model = SpectralEquivariantGNN(node_features_in=5, K_max=64).to(device)
+        amp_ckpt = None
+
     amp_model.eval()
 
     freq_model = None
@@ -82,6 +146,7 @@ def load_models():
         "device": device,
         "amp_model": amp_model,
         "amp_ckpt": amp_ckpt,
+        "amp_score_map": amp_score_map,
         "freq_model": freq_model,
         "freq_ckpt": freq_ckpt,
     }
@@ -153,13 +218,6 @@ def _predict_from_graph(models, graph_data, mode="V2 single tower"):
             pred_probs = dec["prob"]
 
     return pred_w, pred_b, pred_probs
-
-
-def _spectrum_from_peaks(freqs, amps, omega_grid, gamma=0.015):
-    spec = np.zeros_like(omega_grid)
-    for w_k, b_k in zip(freqs, amps):
-        spec += b_k * (gamma / ((omega_grid - w_k) ** 2 + gamma**2))
-    return spec
 
 
 def _matched_metrics(pred_w, pred_b, true_w, true_b):
@@ -305,6 +363,12 @@ elif app_mode == "3. GNN Inference & Spectra":
     amp_name = os.path.basename(models["amp_ckpt"]) if models["amp_ckpt"] else "random-init"
     freq_name = os.path.basename(models["freq_ckpt"]) if models["freq_ckpt"] else "not-loaded"
     st.caption(f"Amp tower checkpoint: {amp_name} | Freq tower checkpoint: {freq_name}")
+    amp_scores = models.get("amp_score_map", {})
+    if amp_scores:
+        score_text = ", ".join(
+            f"{os.path.basename(k)}={v:.3f}" for k, v in sorted(amp_scores.items(), key=lambda x: x[1], reverse=True)
+        )
+        st.caption(f"Amp checkpoint scores (higher is better): {score_text}")
         
     selected_mol = st.selectbox("Select Molecule for Evaluation", list(datasets.keys()))
         

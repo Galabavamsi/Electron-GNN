@@ -104,6 +104,17 @@ Comparison panel outputs:
 
 This allows fast qualitative and quantitative model selection from the UI.
 
+### 5.1 Automatic Amplitude Checkpoint Quality Gate
+
+To prevent visibly broken outputs from weak amplitude checkpoints, the dashboard now scores available amplitude checkpoints on processed validation samples using:
+
+- spectral overlap,
+- peak-count mismatch penalty.
+
+The checkpoint with the best combined score is auto-selected at load time, and the score table is shown in the UI caption.
+
+This protects inference quality when a recent `v3_amp_tower.pth` run underperforms `best_model.pth`.
+
 ---
 
 ## 6. Safer High-Capacity Frequency Training Strategy
@@ -165,7 +176,7 @@ Notes:
 /home/user/Electron-GNN/EGNN/bin/python scripts/evaluate_two_tower.py \
   --data_dir data/processed \
   --v1_ckpt checkpoints/best_model_v1.pth \
-  --v2_ckpt checkpoints/v3_amp_tower.pth
+  --v2_ckpt checkpoints/best_model.pth
 ```
 
 ---

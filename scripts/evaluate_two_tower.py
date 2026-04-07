@@ -94,7 +94,7 @@ def main():
     parser = argparse.ArgumentParser(description="Evaluate V1, V2, and hybrid two-tower inference.")
     parser.add_argument("--data_dir", type=str, default="data/processed")
     parser.add_argument("--v1_ckpt", type=str, default="checkpoints/best_model_v1.pth")
-    parser.add_argument("--v2_ckpt", type=str, default="checkpoints/v3_amp_tower.pth")
+    parser.add_argument("--v2_ckpt", type=str, default="checkpoints/best_model.pth")
     parser.add_argument("--v1_kmax", type=int, default=50)
     parser.add_argument("--v2_kmax", type=int, default=64)
     parser.add_argument("--prob_threshold", type=float, default=0.65)
