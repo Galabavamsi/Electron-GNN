@@ -1,67 +1,229 @@
-# ML-Accelerated Quantum Spectroscopy via GNNs
+# Electron-GNN
 
 ![Status](https://img.shields.io/badge/Status-In%20Progress-yellow)
 ![Physics](https://img.shields.io/badge/Physics-RT--TDDFT-blue)
 ![ML](https://img.shields.io/badge/ML-Equivariant%20GNNs-orange)
 
-## Architecture Overview
-The theoretical foundation of this work couples **geometric deep learning** with the **Fourier-Padé extraction** methodology introduced by Hauge et al. (2023) to perfectly map a static molecule to its time-dependent quantum response, reducing simulation times from minutes/hours to milliseconds.
+ML-Accelerated Quantum Spectroscopy via Graph Neural Networks.
 
-![Absorption Spectrum](docs/assets/ammonia_spectrum.png)
-*(Ground Truth Absorption Spectrum for $NH_3$ reconstructed analytically from the extracted Padé+LASSO Target Peaks.)*
+This repository predicts absorption spectra from molecular geometry using RT-TDDFT peak extraction, graph neural networks, and a two-tower hybrid inference stack.
 
-## End-to-End Pipeline
+## Current State
+
+- V1: simple fixed-slot spectral predictor.
+- V2: set-prediction model with GATv2 encoder, query decoder, count head, and Hungarian matching.
+- V3: two-tower hybrid workflow with a frequency prior tower, amplitude tower, checkpoint quality gating, and dashboard comparison mode.
+
+Current operational default:
+- V3 hybrid inference.
+- Automatic fallback to the strongest amplitude checkpoint.
+
+## End-To-End Pipeline
 
 ```mermaid
 flowchart TD
-    A["Molecule Geometry\nXYZ Coordinates & Atoms"] -->|"Graph Construction"| B(("Equivariant GNN\nMACE / PaiNN"))
-    B -->|"Invariant Head"| C("Frequencies: ω_k")
-    B -->|"Equivariant Head"| D("Amplitudes: B_k")
-    C --> E{"Analytic Reconstruction\nΣ B_k sin(ω_k t)"}
-    D --> E
-    E -->|"Fourier Transform"| F["High-Resolution\nAbsorption Spectrum S(ω)"]
-    
-    %% Training Data Flow
-    G[("RT-TDDFT Simulation\nReSpect")] -.->|"Short Trajectory μ(t)"| H["Padé + K-Means + LASSO\nHauge et al. 2023"]
-    H -.->|"Target Labels"| C
-    H -.->|"Target Labels"| D
-    
-    style B fill:#f9f,stroke:#333,stroke-width:2px;
-    style E fill:#bbf,stroke:#333,stroke-width:2px;
+    A[Raw RT-TDDFT run\nReSpect output] --> B[Peak extraction\nPadé + clustering + LASSO]
+    B --> C[Processed targets\n.data/processed/*.pt]
+    C --> D[Graph construction\ntrain/dataset.py]
+    D --> E[V2 amplitude tower\nGATv2 + query decoder]
+    D --> F[V1 frequency tower\nlegacy prior]
+    E --> G[Hybrid combiner\nfrequency-aware matching]
+    F --> G
+    G --> H[Reconstructed spectrum\nLorentzian sum]
+    H --> I[Dashboard + report\nmetrics, plots, comparisons]
 ```
 
-## Abstract
-Traditional RT-TDDFT calculates the exact time-dependent electron density $\rho(r, t)$ after a Dirac-delta electric field perturbation. This yields the induced dipole moment $\mu(t)$, which is Fourier-transformed to obtain the absorption spectrum. However, doing this at high resolutions requires thousands of time steps. 
+## Version History
 
-This project trains a neural network to bypass this step entirely. We use the methodology of Hauge et al. to extract the exact transition frequencies ($\omega_k$) and dipole amplitudes ($B_k$) from short RT-TDDFT runs to serve as ground-truth training data. We then train an $E(3)$-equivariant GNN to predict these parameter sets from the ground state molecular graph, utilizing a Bipartite Matching Loss (Hungarian algorithm) to handle permutation invariance and varying cluster sizes.
-
-## Repository Structure (Planned)
-```text
-.
-├── data/                  # ReSpect TDDFT structural/output data
-├── docs/                  # Detailed theory and mathematical design
-├── scripts/
-│   ├── parser.py          # Extracts μ(t) from ammonia_x.out
-│   └── extract_peaks.py   # HyQD Padé + LASSO pipeline to generate {ω, B} targets
-├── utils/                 # Utilities for visualization, plotting, and analysis
-│   ├── plot_spectrum.py   # Reconstructs and plots S(ω) from predicted peaks
-│   ├── plot_molecule.py   # 3D molecular visualization utilities
-│   └── signal_utils.py    # Fourier transforms and smoothing for μ(t)
-├── dashboard/             # Interactive Streamlit Data, Training, & Inference UI
-│   └── app.py             # Main dashboard rendering pipeline overview metrics
-├── models/                # PyTorch Geometric models (MACE / PaiNN implementations)
-├── train/                 # Training loops, Bipartite matching losses
-└── README.md
+```mermaid
+flowchart LR
+    V1[V1\nSingle tower baseline] --> V2[V2\nSet prediction + physical losses]
+    V2 --> V3[V3\nTwo-tower hybrid + comparison tooling]
+    V3 --> V3A[Auto checkpoint quality gate]
+    V3 --> V3B[Safe high-capacity freq retraining]
+    V3 --> V3C[Report V3 + dashboard updates]
 ```
 
-## Quick Start (Coming Soon)
-To launch the interactive monitoring dashboard tracking pipeline progress:
+| Version | Main Idea | Status |
+|---|---|---|
+| V1 | Simple fixed-slot spectral predictor | Historical baseline |
+| V2 | GATv2 encoder + query decoder + count head | Reference architecture |
+| V3 | Hybrid frequency prior + amplitude tower + quality gate | Current default |
+
+Git tags:
+- `v2` points to the V2 single-tower baseline.
+- `v3` points to the current V3 two-tower hybrid state.
+
+## Architecture
+
+The model learns unordered transition sets rather than a dense spectrum directly.
+
+### V2 / V3 Model Flow
+
+```mermaid
+flowchart TD
+    A[Atomic graph] --> B[Node and edge embeddings]
+    B --> C[GATv2 message passing]
+    C --> D[Global pooled context]
+    C --> E[Query set decoder]
+    D --> F[Count head]
+    E --> G[Slot heads\nprob / freq / amp]
+    G --> H[Matched peak set]
+    F --> H
+```
+
+### Hybrid Inference Flow
+
+```mermaid
+flowchart TD
+    A[V1 frequency tower] --> C[Hybrid combiner]
+    B[V2 amplitude tower] --> C
+    C --> D[Frequency-aware matching]
+    D --> E[Final peaks]
+    E --> F[Spectrum reconstruction]
+```
+
+## Why This Structure
+
+- Frequencies are easier to learn with a strong prior from the legacy V1 tower.
+- Amplitudes are more sensitive to calibration and benefit from the V2 set decoder and log-scale supervision.
+- Hybrid inference separates concerns: one tower specializes in peak locations, the other in amplitudes and cardinality.
+- This was necessary because the current dataset is tiny and amplitude quality is otherwise unstable.
+
+## Current Dataset
+
+- Processed molecules: 2
+- Targets:
+  - ammonia: 39 peaks
+  - water: 55 peaks
+- Current bottleneck: data volume and chemistry diversity, not execution tooling.
+
+## Results Snapshot
+
+Latest stable evaluation baseline:
+
+| Molecule | Model | Freq MAE | Amp MAE | Overlap | Pred Peaks | True Peaks |
+|---|---|---:|---:|---:|---:|---:|
+| ammonia | V1 | 0.03000 | 1.947729e-03 | 0.5240 | 41 | 39 |
+| ammonia | V2 | 0.71727 | 1.083328e-04 | 0.5434 | 39 | 39 |
+| ammonia | Hybrid | 0.03560 | 1.719348e-04 | 0.6208 | 39 | 39 |
+| water | V1 | 0.04456 | 2.305660e-03 | 0.4510 | 41 | 55 |
+| water | V2 | 0.32185 | 6.498991e-05 | 0.5311 | 56 | 55 |
+| water | Hybrid | 0.04180 | 1.033901e-04 | 0.4666 | 50 | 55 |
+
+Takeaways:
+- V1 remains the strongest frequency prior on the tiny dataset.
+- V2 remains the best amplitude learner in direct amplitude MAE.
+- Hybrid usually gives the best overall balance and the best reported overlap when the checkpoint gate selects the right amplitude model.
+
+## Dashboard
+
+Run the dashboard with:
+
 ```bash
-pip install streamlit matplotlib numpy
 streamlit run dashboard/app.py
 ```
 
-## References
-1. **Hauge, E. et al. (2023)**. "Cost-Efficient High-Resolution Linear Absorption Spectra through Extrapolating the Dipole Moment from Real-Time Time-Dependent Electronic-Structure Theory." *J. Chem. Theory Comput.*
-2. **Batatia, I. et al. (2022)**. "MACE: Higher Order Equivariant Message Passing Neural Networks for Fast and Accurate Force Fields." *arXiv*.
-3. **Schütt, K. T. et al. (2021)**. "Equivariant message passing for the prediction of tensorial properties and molecular spectra" (PaiNN). *ICML*.
+Dashboard sections:
+- Overview & Theory
+- Data Extraction
+- Model Training
+- GNN Inference & Spectra
+- Scientific Diagnostics
+- Dynamic 3D Atom Visualizer
+
+The training page now renders live curves from `results/train_output.log` instead of relying only on an older static plot image.
+The inference page also supports V1, V2, and V3 hybrid comparison.
+
+## Training And Evaluation
+
+Train the current V3 workflow:
+
+```bash
+/home/user/Electron-GNN/EGNN/bin/python -m train.train_v3_two_tower \
+  --data_dir data/processed \
+  --epochs_freq 0 \
+  --epochs_amp 60 \
+  --batch_size 1 \
+  --save_dir checkpoints \
+  --init_freq_ckpt checkpoints/best_model_v1.pth \
+  --init_amp_ckpt checkpoints/best_model.pth
+```
+
+Evaluate V1 vs V2 vs Hybrid:
+
+```bash
+/home/user/Electron-GNN/EGNN/bin/python scripts/evaluate_two_tower.py \
+  --data_dir data/processed \
+  --v1_ckpt checkpoints/best_model_v1.pth \
+  --v2_ckpt checkpoints/best_model.pth
+```
+
+The stable evaluation command intentionally uses `best_model.pth` for the amplitude tower because the newer `v3_amp_tower.pth` can underperform on this small dataset.
+
+## Reports And Documentation
+
+- Current authoritative V3 report: [docs/REPORT_V3_TWO_TOWER_HYBRID.md](docs/REPORT_V3_TWO_TOWER_HYBRID.md)
+- V2 architecture report: [docs/REPORT_V2_ARCHITECTURE_AND_SCALING.md](docs/REPORT_V2_ARCHITECTURE_AND_SCALING.md)
+- Data generation playbook: [docs/PROFESSOR_REQUESTS_AND_DATA_GENERATION.md](docs/PROFESSOR_REQUESTS_AND_DATA_GENERATION.md)
+
+## Repository Layout
+
+```text
+.
+├── data/                  # raw RT-TDDFT output and processed peak targets
+├── dashboard/             # Streamlit interface
+├── docs/                  # theory, V2/V3 reports, playbooks
+├── models/                # V1 and V2/V3 model definitions
+├── scripts/               # extraction, evaluation, plotting utilities
+├── train/                 # dataset, losses, training scripts
+├── utils/                 # plotting, diagnostics, hybrid inference
+└── results/               # logs and generated plots
+```
+
+## Data Generation Flow
+
+```mermaid
+flowchart LR
+    A[Raw ReSpect run] --> B[scripts/parser.py]
+    B --> C[scripts/extract_peaks.py]
+    C --> D[data/processed/*.pt]
+    D --> E[train/train_v3_two_tower.py]
+    E --> F[checkpoints/*.pth]
+    F --> G[dashboard and reports]
+```
+
+## Key Constraints
+
+- The dataset is still too small for robust amplitude generalization.
+- Frequency retraining at high K_max must be guarded with warmup freezing, teacher regularization, and early stopping.
+- The hybrid stack should always be validated against the current report and dashboard comparison panel before checkpoint promotion.
+
+## Extension Scope
+
+```mermaid
+flowchart LR
+    A[Current V3] --> B[Add more molecules]
+    A --> C[x/y/z polarization]
+    A --> D[Higher K_max frequency tower]
+    A --> E[Uncertainty heads]
+    A --> F[True validation split]
+    B --> G[Better generalization]
+    C --> H[Vector-aware labels]
+    D --> I[Reduced slot truncation]
+    E --> J[Confidence-aware inference]
+    F --> K[Safer model selection]
+```
+
+## Status
+
+The repository is currently set up for:
+
+- peak extraction from RT-TDDFT logs,
+- graph construction from molecular structure,
+- V2 amplitude prediction,
+- V3 hybrid inference,
+- dashboard comparison and diagnostics,
+- report generation and versioned release tracking.
+
+The next bottleneck is dataset scaling, not framework completeness.

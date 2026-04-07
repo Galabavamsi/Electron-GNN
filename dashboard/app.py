@@ -236,6 +236,74 @@ def _matched_metrics(pred_w, pred_b, true_w, true_b):
     return f_mae, b_mae, overlap
 
 
+def _parse_training_log(log_path):
+    epochs, train_bipartite, train_spectrum, val_bipartite, val_spectrum = [], [], [], [], []
+    if not os.path.exists(log_path):
+        return epochs, train_bipartite, train_spectrum, val_bipartite, val_spectrum
+
+    with open(log_path, "r") as handle:
+        content = handle.read()
+
+    epoch_blocks = re.split(r"Epoch \d+/\d+", content)
+    for i, block in enumerate(epoch_blocks[1:]):
+        train_match = re.search(r"Train - Bipartite: ([\d.]+), Spectrum: ([\d.]+)", block)
+        val_match = re.search(r"Val\s+- Bipartite: ([\d.]+), Spectrum: ([\d.]+)", block)
+        if train_match and val_match:
+            epochs.append(i + 1)
+            train_bipartite.append(float(train_match.group(1)))
+            train_spectrum.append(float(train_match.group(2)))
+            val_bipartite.append(float(val_match.group(1)))
+            val_spectrum.append(float(val_match.group(2)))
+
+    return epochs, train_bipartite, train_spectrum, val_bipartite, val_spectrum
+
+
+def _best_epoch_summary(log_path):
+    if not os.path.exists(log_path):
+        return None
+
+    with open(log_path, "r") as handle:
+        lines = handle.readlines()
+
+    best_epoch = None
+    best_val = float("inf")
+    current_epoch = None
+    current_train_bip = None
+    current_train_spec = None
+    current_val_bip = None
+    current_val_spec = None
+
+    for line in lines:
+        epoch_match = re.match(r"Epoch (\d+)/(\d+)", line)
+        if epoch_match:
+            current_epoch = int(epoch_match.group(1))
+            continue
+
+        train_match = re.search(r"Train - Bipartite: ([\d.]+), Spectrum: ([\d.]+)", line)
+        if train_match:
+            current_train_bip = float(train_match.group(1))
+            current_train_spec = float(train_match.group(2))
+            continue
+
+        val_match = re.search(r"Val\s+- Bipartite: ([\d.]+), Spectrum: ([\d.]+)", line)
+        if val_match and current_epoch is not None:
+            current_val_bip = float(val_match.group(1))
+            current_val_spec = float(val_match.group(2))
+            val_total = current_val_bip + 0.3 * current_val_spec
+            if val_total < best_val:
+                best_val = val_total
+                best_epoch = {
+                    "epoch": current_epoch,
+                    "train_bip": current_train_bip,
+                    "train_spec": current_train_spec,
+                    "val_bip": current_val_bip,
+                    "val_spec": current_val_spec,
+                    "val_total": val_total,
+                }
+
+    return best_epoch
+
+
 def get_predictions(models, dataset_name, mode="V2 single tower"):
     graph_data, true_w, true_b = _prepare_graph_and_truth(dataset_name)
     if graph_data is None:
@@ -318,32 +386,31 @@ elif app_mode == "2. Model Training":
     
     log_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'results', 'train_output.log'))
     if os.path.exists(log_path):
-        import re
-        epochs, train_bipartite, val_bipartite = [], [], []
-        with open(log_path, 'r') as f:
-            content = f.read()
-        epoch_blocks = re.split(r'Epoch \d+/\d+', content)
-        for i, block in enumerate(epoch_blocks[1:]):
-            epochs.append(i + 1)
-            train_match = re.search(r'Train - Bipartite: ([\d.]+), Spectrum: ([\d.]+)', block)
-            val_match = re.search(r'Val\s+- Bipartite: ([\d.]+), Spectrum: ([\d.]+)', block)
-            if train_match and val_match:
-                train_bipartite.append(float(train_match.group(1)))
-                val_bipartite.append(float(val_match.group(1)))
-                
-        fig, ax = plt.subplots(figsize=(10, 4))
-        ax.plot(epochs, train_bipartite, label="Train Loss", color="blue")
-        ax.plot(epochs, val_bipartite, label="Val Loss", color="orange", linestyle="--")
-        ax.set_xlabel("Epoch")
-        ax.set_ylabel("Bipartite Matching Loss")
-        ax.set_title("Training Curve")
-        ax.legend()
-        st.pyplot(fig)
-        
-        # Or load the image if it exists
+        epochs, train_bipartite, train_spectrum, val_bipartite, val_spectrum = _parse_training_log(log_path)
+        best_epoch = _best_epoch_summary(log_path)
+
+        if best_epoch is not None:
+            col_a, col_b, col_c = st.columns(3)
+            col_a.metric("Best Epoch", best_epoch["epoch"])
+            col_b.metric("Best Val Total", f"{best_epoch['val_total']:.4f}")
+            col_c.metric("Best Val Bip / Spec", f"{best_epoch['val_bip']:.4f} / {best_epoch['val_spec']:.4f}")
+
+        if epochs:
+            fig, ax = plt.subplots(figsize=(11, 4))
+            ax.plot(epochs, train_bipartite, label="Train Bipartite", color="tab:blue")
+            ax.plot(epochs, val_bipartite, label="Val Bipartite", color="tab:orange", linestyle="--")
+            ax.plot(epochs, train_spectrum, label="Train Spectrum", color="tab:green", alpha=0.7)
+            ax.plot(epochs, val_spectrum, label="Val Spectrum", color="tab:red", linestyle=":")
+            ax.set_xlabel("Epoch")
+            ax.set_ylabel("Loss")
+            ax.set_title("Latest Training Curves From results/train_output.log")
+            ax.legend(ncol=2)
+            ax.grid(True, linestyle="--", alpha=0.25)
+            st.pyplot(fig)
+
         img_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'results', 'loss_curves.png'))
         if os.path.exists(img_path):
-            st.image(img_path, caption="Comprehensive Loss Curves")
+            st.caption("Legacy static image kept for reference; live curves above are rendered from the current log.")
     else:
         st.warning("No training log found at results/train_output.log")
 
