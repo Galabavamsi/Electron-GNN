@@ -1,4 +1,5 @@
 import argparse
+import atexit
 import os
 import random
 import sys
@@ -252,6 +253,7 @@ def main():
     parser = argparse.ArgumentParser(description="Train Version 3 two-tower hybrid models")
     parser.add_argument("--data_dir", type=str, default="data/processed")
     parser.add_argument("--save_dir", type=str, default="checkpoints")
+    parser.add_argument("--log_file", type=str, default="results/v3_train_output.log")
     parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--grad_clip", type=float, default=1.0)
@@ -281,10 +283,28 @@ def main():
 
     args = parser.parse_args()
 
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    log_file = None
+    if args.log_file:
+        log_path = args.log_file
+        if not os.path.isabs(log_path):
+            log_path = os.path.join(repo_root, log_path)
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        log_file = open(log_path, "w", encoding="utf-8")
+        atexit.register(log_file.close)
+
+    def log(msg=""):
+        print(msg)
+        if log_file is not None:
+            log_file.write(f"{msg}\n")
+            log_file.flush()
+
     set_seed(args.seed)
     os.makedirs(args.save_dir, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    log(f"Using device: {device}")
+    if log_file is not None:
+        log(f"Writing log to: {log_file.name}")
 
     dataset = SpectrumDataset(args.data_dir)
     if len(dataset) == 0:
@@ -298,7 +318,7 @@ def main():
     amp_ckpt_out = os.path.join(args.save_dir, "v3_amp_tower.pth")
 
     if args.epochs_freq > 0:
-        print("\n=== Training Frequency Tower (V3) ===")
+        log("\n=== Training Frequency Tower (V3) ===")
         freq_model = SpectralEquivariantGNNV1(
             node_features_in=5,
             hidden_dim=args.hidden_dim_freq,
@@ -306,7 +326,7 @@ def main():
         ).to(device)
         loaded, total = load_partial_state_dict(freq_model, args.init_freq_ckpt, device)
         if loaded > 0:
-            print(f"Loaded {loaded}/{total} compatible params into freq tower from {args.init_freq_ckpt}")
+            log(f"Loaded {loaded}/{total} compatible params into freq tower from {args.init_freq_ckpt}")
 
         teacher_model = None
         teacher_slots = 0
@@ -322,7 +342,7 @@ def main():
             for p in teacher_model.parameters():
                 p.requires_grad = False
             teacher_slots = min(args.k_max_freq, teacher_kmax)
-            print(
+            log(
                 f"Using teacher regularization from {args.freq_teacher_ckpt} "
                 f"for first {teacher_slots} slots (lambda={args.freq_teacher_lambda})."
             )
@@ -332,7 +352,7 @@ def main():
         unfrozen = False
         if freeze_backbone and warmup_epochs > 0:
             set_backbone_trainable(freq_model, trainable=False)
-            print(f"Frequency tower warmup: freezing backbone for {warmup_epochs} epochs.")
+            log(f"Frequency tower warmup: freezing backbone for {warmup_epochs} epochs.")
 
         optimizer_f = build_optimizer(freq_model.parameters(), lr=args.lr_freq)
         scheduler_f = optim.lr_scheduler.ReduceLROnPlateau(optimizer_f, mode="min", factor=0.5, patience=8)
@@ -340,7 +360,7 @@ def main():
         best_freq = float("inf")
         no_improve = 0
         for epoch in range(1, args.epochs_freq + 1):
-            print(f"\n[Freq Tower] Epoch {epoch}/{args.epochs_freq}")
+            log(f"\n[Freq Tower] Epoch {epoch}/{args.epochs_freq}")
 
             if freeze_backbone and (not unfrozen) and epoch == warmup_epochs + 1:
                 set_backbone_trainable(freq_model, trainable=True)
@@ -349,7 +369,7 @@ def main():
                     optimizer_f, mode="min", factor=0.5, patience=8
                 )
                 unfrozen = True
-                print("Unfroze frequency tower backbone after warmup.")
+                log("Unfroze frequency tower backbone after warmup.")
 
             train_total, train_base, train_teacher = train_freq_epoch(
                 freq_model,
@@ -364,7 +384,7 @@ def main():
             val_loss = eval_freq_epoch(freq_model, val_loader, device)
             scheduler_f.step(val_loss)
 
-            print(
+            log(
                 f"Freq tower losses - train(total/base/teacher): "
                 f"{train_total:.4f}/{train_base:.4f}/{train_teacher:.4f} "
                 f"val: {val_loss:.4f}"
@@ -373,20 +393,20 @@ def main():
             if val_loss < (best_freq - args.freq_min_delta):
                 best_freq = val_loss
                 torch.save(freq_model.state_dict(), freq_ckpt_out)
-                print(f"Saved best freq tower: {freq_ckpt_out} (val={best_freq:.4f})")
+                log(f"Saved best freq tower: {freq_ckpt_out} (val={best_freq:.4f})")
                 no_improve = 0
             else:
                 no_improve += 1
 
             if no_improve >= args.freq_early_stop_patience:
-                print(
+                log(
                     f"Early stopping frequency tower after {no_improve} non-improving epochs "
                     f"(patience={args.freq_early_stop_patience})."
                 )
                 break
 
     if args.epochs_amp > 0:
-        print("\n=== Training Amplitude Tower (V3) ===")
+        log("\n=== Training Amplitude Tower (V3) ===")
         amp_model = SpectralEquivariantGNN(
             node_features_in=5,
             hidden_dim=args.hidden_dim_amp,
@@ -400,7 +420,7 @@ def main():
         if args.init_amp_ckpt and os.path.exists(args.init_amp_ckpt):
             amp_state = torch.load(args.init_amp_ckpt, map_location=device, weights_only=True)
             amp_model.load_state_dict(amp_state, strict=False)
-            print(f"Loaded amp tower init checkpoint: {args.init_amp_ckpt}")
+            log(f"Loaded amp tower init checkpoint: {args.init_amp_ckpt}")
 
         optimizer_a = optim.AdamW(amp_model.parameters(), lr=args.lr_amp, weight_decay=1e-4)
         scheduler_a = optim.lr_scheduler.ReduceLROnPlateau(
@@ -409,7 +429,7 @@ def main():
 
         best_amp = float("inf")
         for epoch in range(1, args.epochs_amp + 1):
-            print(f"\n[Amp Tower] Epoch {epoch}/{args.epochs_amp}")
+            log(f"\n[Amp Tower] Epoch {epoch}/{args.epochs_amp}")
             train_bip, train_spec = train_amp_epoch(
                 amp_model,
                 train_loader,
@@ -423,7 +443,7 @@ def main():
             val_total = val_bip + args.lambda_spectrum * val_spec
             scheduler_a.step(val_total)
 
-            print(
+            log(
                 f"Amp tower - train(bip/spec): {train_bip:.4f}/{train_spec:.4f} "
                 f"val(bip/spec): {val_bip:.4f}/{val_spec:.4f} total={val_total:.4f}"
             )
@@ -431,9 +451,9 @@ def main():
             if val_total < best_amp:
                 best_amp = val_total
                 torch.save(amp_model.state_dict(), amp_ckpt_out)
-                print(f"Saved best amp tower: {amp_ckpt_out} (val_total={best_amp:.4f})")
+                log(f"Saved best amp tower: {amp_ckpt_out} (val_total={best_amp:.4f})")
 
-    print("\nV3 two-tower training complete.")
+    log("\nV3 two-tower training complete.")
 
 
 if __name__ == "__main__":

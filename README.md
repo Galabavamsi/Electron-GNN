@@ -124,16 +124,25 @@ Run the dashboard with:
 streamlit run dashboard/app.py
 ```
 
-Dashboard sections:
-- Overview & Theory
-- Data Extraction
-- Model Training
-- GNN Inference & Spectra
-- Scientific Diagnostics
-- Dynamic 3D Atom Visualizer
+Dashboard sections (cleaned up with a minimalist vintage UI):
+- Overview
+- Data
+- Training
+- Inference
+- Diagnostics
+- 3D Visualizer
 
-The training page now renders live curves from `results/train_output.log` instead of relying only on an older static plot image.
-The inference page also supports V1, V2, and V3 hybrid comparison.
+What changed in the overhaul:
+- Cleaner layout and typography with a consistent visual system.
+- Less conflicting controls and clearer section boundaries.
+- Richer data insights (distribution histograms, per-sample peak inspection, summary table).
+- Better training monitor with selectable log source and V2/V3-aware parsing.
+- Better inference studio with V1/V2/V3 comparison metrics and plots.
+
+Auto-update behavior:
+- Sidebar has `Auto-refresh data/logs` and configurable refresh interval.
+- Data and training views are cache-busted by file signatures + short TTL, so updates appear automatically when files change.
+- Training monitor reads the newest log source (`results/train_output.log` or `results/v3_train_output.log`).
 
 ## Training And Evaluation
 
@@ -146,6 +155,7 @@ Train the current V3 workflow:
   --epochs_amp 60 \
   --batch_size 1 \
   --save_dir checkpoints \
+  --log_file results/v3_train_output.log \
   --init_freq_ckpt checkpoints/best_model_v1.pth \
   --init_amp_ckpt checkpoints/best_model.pth
 ```
