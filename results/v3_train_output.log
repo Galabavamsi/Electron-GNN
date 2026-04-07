@@ -5,94 +5,94 @@ Train/val split: train=1 val=1 (val_ratio=0.50)
 === Training Amplitude Tower (V3) ===
 Loaded amp tower init checkpoint: checkpoints/best_model.pth
 
-[Amp Tower] Epoch 1/60
+[Amp Tower] Epoch 1/80
 Amp tower - train(bip/spec): 3.9185/0.5015 val(bip/spec): 3.7375/1.0181 total=4.0430 quality=0.4150
 Saved best amp tower: checkpoints/v3_amp_tower.pth (val_total=4.0430, quality=0.4150)
 
-[Amp Tower] Epoch 2/60
+[Amp Tower] Epoch 2/80
 Amp tower - train(bip/spec): 4.0137/0.7509 val(bip/spec): 4.1582/1.1194 total=4.4940 quality=0.4261
 Saved best amp tower: checkpoints/v3_amp_tower.pth (val_total=4.4940, quality=0.4261)
 
-[Amp Tower] Epoch 3/60
+[Amp Tower] Epoch 3/80
 Amp tower - train(bip/spec): 3.7108/0.8742 val(bip/spec): 3.9508/1.1209 total=4.2871 quality=0.4840
 Saved best amp tower: checkpoints/v3_amp_tower.pth (val_total=4.2871, quality=0.4840)
 
-[Amp Tower] Epoch 4/60
+[Amp Tower] Epoch 4/80
 Amp tower - train(bip/spec): 4.1475/0.8170 val(bip/spec): 3.6434/1.1651 total=3.9929 quality=0.4110
 
-[Amp Tower] Epoch 5/60
+[Amp Tower] Epoch 5/80
 Amp tower - train(bip/spec): 3.9302/0.7533 val(bip/spec): 3.8551/1.1938 total=4.2132 quality=0.4635
 
-[Amp Tower] Epoch 6/60
+[Amp Tower] Epoch 6/80
 Amp tower - train(bip/spec): 3.9020/0.7161 val(bip/spec): 3.9997/1.2079 total=4.3621 quality=0.4839
 
-[Amp Tower] Epoch 7/60
+[Amp Tower] Epoch 7/80
 Amp tower - train(bip/spec): 3.7977/0.7038 val(bip/spec): 3.9190/1.2764 total=4.3019 quality=0.3997
 
-[Amp Tower] Epoch 8/60
+[Amp Tower] Epoch 8/80
 Amp tower - train(bip/spec): 3.9627/0.7938 val(bip/spec): 4.0992/1.3162 total=4.4941 quality=0.3523
 
-[Amp Tower] Epoch 9/60
+[Amp Tower] Epoch 9/80
 Amp tower - train(bip/spec): 3.4921/0.8992 val(bip/spec): 4.1051/1.3027 total=4.4959 quality=0.4038
 
-[Amp Tower] Epoch 10/60
+[Amp Tower] Epoch 10/80
 Amp tower - train(bip/spec): 3.6189/0.8251 val(bip/spec): 4.0178/1.2595 total=4.3957 quality=0.4803
 
-[Amp Tower] Epoch 11/60
+[Amp Tower] Epoch 11/80
 Amp tower - train(bip/spec): 3.9056/0.9070 val(bip/spec): 3.7596/1.2517 total=4.1351 quality=0.4886
 Saved best amp tower: checkpoints/v3_amp_tower.pth (val_total=4.1351, quality=0.4886)
 
-[Amp Tower] Epoch 12/60
+[Amp Tower] Epoch 12/80
 Amp tower - train(bip/spec): 4.2804/0.8140 val(bip/spec): 3.7861/1.2430 total=4.1590 quality=0.4673
 
-[Amp Tower] Epoch 13/60
+[Amp Tower] Epoch 13/80
 Amp tower - train(bip/spec): 4.8797/0.6940 val(bip/spec): 3.8083/1.1927 total=4.1661 quality=0.4737
 
-[Amp Tower] Epoch 14/60
+[Amp Tower] Epoch 14/80
 Amp tower - train(bip/spec): 4.4312/0.6294 val(bip/spec): 4.1086/1.1206 total=4.4448 quality=0.5004
 Saved best amp tower: checkpoints/v3_amp_tower.pth (val_total=4.4448, quality=0.5004)
 
-[Amp Tower] Epoch 15/60
+[Amp Tower] Epoch 15/80
 Amp tower - train(bip/spec): 4.3852/0.6314 val(bip/spec): 4.2921/1.0363 total=4.6030 quality=0.4795
 
-[Amp Tower] Epoch 16/60
+[Amp Tower] Epoch 16/80
 Amp tower - train(bip/spec): 4.9833/0.6342 val(bip/spec): 4.2872/0.9773 total=4.5804 quality=0.5473
 Saved best amp tower: checkpoints/v3_amp_tower.pth (val_total=4.5804, quality=0.5473)
 
-[Amp Tower] Epoch 17/60
+[Amp Tower] Epoch 17/80
 Amp tower - train(bip/spec): 4.8191/0.6273 val(bip/spec): 4.5496/0.9644 total=4.8389 quality=0.5365
 
-[Amp Tower] Epoch 18/60
+[Amp Tower] Epoch 18/80
 Amp tower - train(bip/spec): 4.4274/0.6003 val(bip/spec): 4.6000/0.9459 total=4.8838 quality=0.5280
 
-[Amp Tower] Epoch 19/60
+[Amp Tower] Epoch 19/80
 Amp tower - train(bip/spec): 4.1426/0.5619 val(bip/spec): 4.7387/0.9172 total=5.0139 quality=0.5216
 
-[Amp Tower] Epoch 20/60
+[Amp Tower] Epoch 20/80
 Amp tower - train(bip/spec): 4.1166/0.5144 val(bip/spec): 4.5758/0.8880 total=4.8422 quality=0.5208
 
-[Amp Tower] Epoch 21/60
+[Amp Tower] Epoch 21/80
 Amp tower - train(bip/spec): 4.0897/0.4624 val(bip/spec): 4.6341/0.8649 total=4.8936 quality=0.5132
 
-[Amp Tower] Epoch 22/60
+[Amp Tower] Epoch 22/80
 Amp tower - train(bip/spec): 3.8905/0.4117 val(bip/spec): 4.8562/0.8516 total=5.1117 quality=0.5128
 
-[Amp Tower] Epoch 23/60
+[Amp Tower] Epoch 23/80
 Amp tower - train(bip/spec): 3.8911/0.3717 val(bip/spec): 4.7107/0.8448 total=4.9641 quality=0.5124
 
-[Amp Tower] Epoch 24/60
+[Amp Tower] Epoch 24/80
 Amp tower - train(bip/spec): 4.0942/0.3568 val(bip/spec): 4.7706/0.8343 total=5.0209 quality=0.5083
 
-[Amp Tower] Epoch 25/60
+[Amp Tower] Epoch 25/80
 Amp tower - train(bip/spec): 4.0488/0.3407 val(bip/spec): 4.7583/0.8193 total=5.0041 quality=0.5064
 
-[Amp Tower] Epoch 26/60
+[Amp Tower] Epoch 26/80
 Amp tower - train(bip/spec): 4.2810/0.3305 val(bip/spec): 4.7011/0.8109 total=4.9443 quality=0.5072
 
-[Amp Tower] Epoch 27/60
+[Amp Tower] Epoch 27/80
 Amp tower - train(bip/spec): 4.5809/0.3245 val(bip/spec): 4.5844/0.8080 total=4.8268 quality=0.5073
 
-[Amp Tower] Epoch 28/60
+[Amp Tower] Epoch 28/80
 Amp tower - train(bip/spec): 4.8365/0.3177 val(bip/spec): 4.5733/0.8040 total=4.8145 quality=0.5112
 Early stopping amp tower after 12 non-improving epochs (patience=12).
 

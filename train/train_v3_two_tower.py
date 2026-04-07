@@ -342,7 +342,7 @@ def main():
     parser.add_argument("--freq_teacher_lambda", type=float, default=0.5)
     parser.add_argument("--freq_teacher_ckpt", type=str, default="checkpoints/best_model_v1.pth")
 
-    parser.add_argument("--epochs_amp", type=int, default=60)
+    parser.add_argument("--epochs_amp", type=int, default=80)
     parser.add_argument("--lr_amp", type=float, default=2e-4)
     parser.add_argument("--k_max_amp", type=int, default=64)
     parser.add_argument("--hidden_dim_amp", type=int, default=128)

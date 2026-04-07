@@ -3,6 +3,7 @@ import json
 import re
 import sys
 import glob
+from datetime import datetime
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -119,6 +120,54 @@ setTimeout(function() {{
         """,
         height=0,
     )
+
+
+def render_mermaid_diagram(diagram_text, height=260):
+    element_id = f"mermaid-{int(datetime.now().timestamp() * 1_000_000)}"
+    graph_def = json.dumps(diagram_text)
+    components.html(
+        f"""
+<div id="{element_id}" style="
+    background: rgba(22, 20, 28, 0.88);
+    border: 1px solid #2a2630;
+    border-radius: 12px;
+    padding: 0.4rem;
+    overflow-x: auto;
+"></div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+(function () {{
+    const container = document.getElementById("{element_id}");
+    const graphDef = {graph_def};
+    if (!container) return;
+
+    if (!window.mermaid) {{
+        container.innerHTML = "<div style='color:#f2e6cf;padding:0.5rem;'>Mermaid library failed to load.</div>";
+        return;
+    }}
+
+    mermaid.initialize({{
+        startOnLoad: false,
+        theme: "dark",
+        securityLevel: "loose",
+        fontFamily: "Iowan Old Style, Palatino Linotype, Georgia, serif"
+    }});
+
+    const renderId = "graph-" + "{element_id}";
+    mermaid
+        .render(renderId, graphDef)
+        .then((result) => {{
+            container.innerHTML = result.svg;
+        }})
+        .catch((err) => {{
+            container.innerHTML = "<pre style='color:#f2e6cf;padding:0.5rem;white-space:pre-wrap;'>Diagram render error: " + String(err) + "</pre>";
+        }});
+}})();
+</script>
+            """,
+            height=height,
+            scrolling=True,
+        )
 
 
 def file_signature(path):
@@ -582,19 +631,18 @@ def render_overview(dataset_df, models):
 
     st.markdown("---")
     st.markdown("### Pipeline")
-    st.markdown(
+    render_mermaid_diagram(
         """
-```mermaid
 flowchart TD
-    A[Raw RT-TDDFT] --> B[Padé + clustering + LASSO extraction]
+    A[Raw RT-TDDFT] --> B[Pade + clustering + LASSO extraction]
     B --> C[Processed peak targets]
     C --> D[V2 amplitude tower]
     C --> E[V1 frequency prior]
     D --> F[Hybrid combiner]
     E --> F
     F --> G[Reconstructed spectrum + diagnostics]
-```
-        """
+        """,
+        height=240,
     )
 
 
@@ -663,15 +711,23 @@ def render_training_page():
         return
 
     latest_log = max(existing_logs, key=lambda p: os.path.getmtime(p))
-    selected_log = st.selectbox(
-        "Log source",
-        existing_logs,
-        index=existing_logs.index(latest_log),
-        format_func=lambda p: os.path.basename(p),
-    )
+    follow_latest = st.toggle("Follow newest log source", value=True)
+    if follow_latest:
+        selected_log = latest_log
+        st.caption(f"Log source: {os.path.basename(selected_log)} (auto)")
+    else:
+        selected_log = st.selectbox(
+            "Log source",
+            existing_logs,
+            index=existing_logs.index(latest_log),
+            format_func=lambda p: os.path.basename(p),
+        )
 
+    local_tz = datetime.now().astimezone().tzinfo
+    modified_local = pd.to_datetime(os.path.getmtime(selected_log), unit='s', utc=True).tz_convert(local_tz)
+    modified_str = modified_local.strftime("%Y-%m-%d %H:%M:%S %Z")
     st.markdown(
-        f"<span class='small-note'>Monitoring: {selected_log} | last modified: {pd.to_datetime(os.path.getmtime(selected_log), unit='s')}</span>",
+        f"<span class='small-note'>Monitoring: {selected_log} | last modified: {modified_str}</span>",
         unsafe_allow_html=True,
     )
 
@@ -680,39 +736,56 @@ def render_training_page():
     if selected_name == "v3_train_output.log":
         data = parse_v3_training_log(selected_log, file_signature(selected_log))
 
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         if data["freq_val"]:
             best_freq_idx = int(np.argmin(data["freq_val"]))
             c1.metric("Best Freq Val", f"{data['freq_val'][best_freq_idx]:.4f}", f"epoch {data['freq_epoch'][best_freq_idx]}")
         else:
-            c1.metric("Best Freq Val", "N/A")
+            c1.metric("Best Freq Val", "Skipped")
 
         if data["amp_val_total"]:
             best_amp_idx = int(np.argmin(data["amp_val_total"]))
             c2.metric("Best Amp Val Total", f"{data['amp_val_total'][best_amp_idx]:.4f}", f"epoch {data['amp_epoch'][best_amp_idx]}")
+            c3.metric("Latest Amp Val Total", f"{data['amp_val_total'][-1]:.4f}", f"epoch {data['amp_epoch'][-1]}")
         else:
             c2.metric("Best Amp Val Total", "N/A")
+            c3.metric("Latest Amp Val Total", "N/A")
 
-        fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+        has_freq = len(data["freq_epoch"]) > 0
+        has_amp = len(data["amp_epoch"]) > 0
+        if not has_freq and not has_amp:
+            st.warning("Could not parse any V3 curves from this log.")
+            return
 
-        if data["freq_epoch"]:
-            axes[0].plot(data["freq_epoch"], data["freq_train_total"], label="train total", color="#c9973a")
-            axes[0].plot(data["freq_epoch"], data["freq_val"], label="val", color="#f0c674", linestyle="--")
-            axes[0].set_title("Frequency Tower")
-            axes[0].set_xlabel("Epoch")
-            axes[0].set_ylabel("Loss")
-            axes[0].legend()
-            axes[0].grid(True, linestyle="--", alpha=0.25)
+        if has_freq and has_amp:
+            fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+            freq_ax, amp_ax = axes
+        elif has_freq:
+            fig, freq_ax = plt.subplots(figsize=(11, 4))
+            amp_ax = None
+        else:
+            fig, amp_ax = plt.subplots(figsize=(11, 4))
+            freq_ax = None
+            st.info("Frequency tower was skipped for this run (epochs_freq=0), so only amplitude curves are shown.")
 
-        if data["amp_epoch"]:
-            axes[1].plot(data["amp_epoch"], data["amp_train_bip"], label="train bip", color="#9dbad5")
-            axes[1].plot(data["amp_epoch"], data["amp_val_bip"], label="val bip", color="#6b8fb3", linestyle="--")
-            axes[1].plot(data["amp_epoch"], data["amp_val_total"], label="val total", color="#d88b8b")
-            axes[1].set_title("Amplitude Tower")
-            axes[1].set_xlabel("Epoch")
-            axes[1].set_ylabel("Loss")
-            axes[1].legend()
-            axes[1].grid(True, linestyle="--", alpha=0.25)
+        if has_freq and freq_ax is not None:
+            freq_ax.plot(data["freq_epoch"], data["freq_train_total"], label="train total", color="#c9973a")
+            freq_ax.plot(data["freq_epoch"], data["freq_val"], label="val", color="#f0c674", linestyle="--")
+            freq_ax.set_title("Frequency Tower")
+            freq_ax.set_xlabel("Epoch")
+            freq_ax.set_ylabel("Loss")
+            freq_ax.legend()
+            freq_ax.grid(True, linestyle="--", alpha=0.25)
+
+        if has_amp and amp_ax is not None:
+            amp_ax.plot(data["amp_epoch"], data["amp_train_bip"], label="train bip", color="#9dbad5")
+            amp_ax.plot(data["amp_epoch"], data["amp_val_bip"], label="val bip", color="#6b8fb3", linestyle="--")
+            amp_ax.plot(data["amp_epoch"], data["amp_val_total"], label="val total", color="#d88b8b")
+            amp_ax.set_title("Amplitude Tower")
+            amp_ax.set_xlabel("Epoch")
+            amp_ax.set_ylabel("Loss")
+            amp_ax.legend()
+            amp_ax.grid(True, linestyle="--", alpha=0.25)
 
         st.pyplot(fig)
 

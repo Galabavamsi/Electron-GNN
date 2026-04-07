@@ -156,7 +156,7 @@ Train the current V3 workflow:
 /home/user/Electron-GNN/EGNN/bin/python -m train.train_v3_two_tower \
   --data_dir data/processed \
   --epochs_freq 0 \
-  --epochs_amp 60 \
+  --epochs_amp 80 \
   --batch_size 1 \
   --val_ratio 0.5 \
   --amp_early_stop_patience 12 \
