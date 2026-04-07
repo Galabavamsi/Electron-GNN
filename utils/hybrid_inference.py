@@ -128,22 +128,6 @@ def combine_two_tower_predictions(
     amp_b_all = amp_out["amps"]
     amp_p_all = amp_out["probs"]
 
-    if desired_count is not None and desired_count > pred_w.size and amp_w_all.size > 0:
-        need = int(desired_count - pred_w.size)
-        extra_idx = []
-        # Backfill with high-confidence amp-tower frequencies not near existing freq slots.
-        for idx in np.argsort(amp_p_all)[::-1]:
-            w_cand = amp_w_all[idx]
-            if pred_w.size > 0 and np.min(np.abs(pred_w - w_cand)) < 0.01:
-                continue
-            extra_idx.append(idx)
-            if len(extra_idx) >= need:
-                break
-
-        if extra_idx:
-            pred_w = np.concatenate([pred_w, amp_w_all[extra_idx]])
-            pred_p_freq = np.concatenate([pred_p_freq, amp_p_all[extra_idx]])
-
     if pred_w.size == 0:
         return pred_w, np.array([], dtype=float), np.array([], dtype=float)
 
