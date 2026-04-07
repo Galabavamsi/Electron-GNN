@@ -391,6 +391,119 @@ Implement V4 in this order:
 
 ## 15. End-to-End V4 Pipeline: Labeled Flow Diagrams and Equations
 
+### 15.0 Raw Data Pipeline: Sources, Formats, and Processing
+
+#### 15.0.1 Raw Data Sources and Formats
+
+**Input:** Quantum chemistry output files from TDDFT or multireference methods.
+
+**File formats:**
+
+1. **Electron density grids** (`.rho` format):
+   - 3D spatial electron density evaluated on a regular cubic grid.
+   - Typical grid: 64×64×64 or 96×96×96 spatial points.
+   - Format: binary or ASCII records with header metadata (grid origin, spacing, dimensions).
+
+2. **Molecular geometry files** (`.xyz`, `.mol2`, `.pdb`):
+   - Atomic positions and types for the molecule.
+   - Standard XYZ: atom count, comment, then atom symbol and (x, y, z) coordinates per line.
+
+3. **Excited-state property files** (text or HDF5):
+   - Vertical excitation energies (eV).
+   - Oscillator strengths.
+   - Transition dipole moments.
+   - Nonadiabatic couplings (if available).
+
+4. **Energy or spectrum reference data** (ASCII tables):
+   - Frequency grid and corresponding absorption cross-section or intensity.
+   - One column per excited state or aggregate.
+
+#### 15.0.2 Data Processing Pipeline
+
+```mermaid
+flowchart LR
+    DP0["Raw Data Sources"] --> DP0a["Density grids<br/>(.rho files)"]
+    DP0 --> DP0b["Molecular geometry<br/>(.xyz, .pdb)"]
+    DP0 --> DP0c["Properties<br/>(energies, oscstr)"]
+    
+    DP0a --> DP1["Load & parse<br/>grid files"]
+    DP0b --> DP2["Parse atom coordinates<br/>and types"]
+    DP0c --> DP3["Parse quantum properties<br/>and references"]
+    
+    DP1 --> DP4["Grid normalization<br/>and cropping"]
+    DP2 --> DP5["Compute atomic features<br/>(distances, angles)"]
+    DP3 --> DP6["Bin energies and<br/>compute spectrum"]
+    
+    DP4 --> DP7["Construct molecular<br/>graph G = V, E"]
+    DP5 --> DP7
+    DP6 --> DP7
+    
+    DP7 --> DP8["Node embeddings<br/>(atomic numbers,<br/>degree, coords)"]
+    DP7 --> DP9["Edge features<br/>(distances, angles)"]
+    DP7 --> DP10["Global target labels<br/>spectrum or peaks"]
+    
+    DP8 --> DP11["Batch and cache<br/>processed samples"]
+    DP9 --> DP11
+    DP10 --> DP11
+    
+    DP11 --> DP12["Train/val/test splits<br/>with stratification"]
+    
+    DP12 --> DP13["Ready for V4 base<br/>predictor training"]
+```
+
+#### 15.0.3 Processing Details
+
+**Step 1: Grid loading and normalization**
+
+- Read 3D electron density from `.rho` files.
+- Normalize by total electron count: \(\rho_{norm}(\mathbf{r}) = \rho(\mathbf{r}) / \int \rho(\mathbf{r}) d\mathbf{r}\).
+- Optional: crop to bounding box around atoms to reduce dimensionality.
+- Resample to standard grid size (e.g., 64³) if necessary.
+
+**Step 2: Molecular graph construction**
+
+- Extract atomic coordinates and types from geometry file.
+- Compute pairwise distances: \(d_{ij} = \|\mathbf{r}_i - \mathbf{r}_j\|_2\).
+- Define edges: connect atom pairs within a cutoff distance (e.g., 1.5 Å for bonded, 3 Å for nearby).
+- Store edge features: distance, angle with other edges, bond type (single/double/aromatic).
+
+**Step 3: Feature engineering**
+
+- **Node features**: atomic number \(Z_i\), degree in graph, position relative to centroid.
+- **Edge features**: bond length, angle, electronegativity difference.
+- **Global features**: molecular charge, total electron count, symmetry group.
+
+**Step 4: Spectrum target construction**
+
+- Load reference excitation energies and oscillator strengths.
+- Construct absorption spectrum by convolving with Lorentzian line shape:
+
+$$
+A(\omega) = \sum_n \frac{f_n \gamma_n}{(\omega - \omega_n)^2 + \gamma_n^2}
+$$
+
+where \(f_n\) is oscillator strength, \(\omega_n\) is excitation energy, \(\gamma_n\) is damping (FWHM).
+
+- Discretize spectrum on training frequency grid: \(A(\omega_1), A(\omega_2), \ldots, A(\omega_M)\).
+
+**Step 5: Batching and splitting**
+
+- Group samples into train/validation/test sets (e.g., 70/15/15 stratified by molecule type).
+- Create mini-batches with graph padding to uniform size.
+- Cache processed samples to disk to avoid recomputation.
+
+#### 15.0.4 Data Availability and Storage
+
+| Item | Location | Format | Size (example) |
+|---|---|---|---|
+| Electron density grids | `data/raw/molecule_x/` | `.rho` binary | 64³ × 4 bytes ≈ 1 MB each |
+| Geometries | `data/raw/molecule.xyz` | XYZ text | ~1 KB per molecule |
+| Properties | `data/raw/molecule_properties.json` or HDF5 | JSON or HDF5 | ~10 KB per molecule |
+| Processed graphs | `data/processed/` | PyTorch tensors (.pt) | Cached, variable per batch |
+| Training dataset | `data/processed/dataset_train.pt` | PyG Batch object | Depends on molecule count |
+
+---
+
 ### 15.1 Equation Label Registry
 
 This subsection defines the canonical equation labels used in the diagrams.
@@ -454,13 +567,22 @@ $$
 H(s) = d + s e + \sum_{k=1}^{K}\frac{r_k}{s - p_k}
 $$
 
-### 15.2 End-to-End System Flow (Training + Inference + Feedback)
+### 15.2 End-to-End System Flow (Data Intake + Training + Inference + Feedback)
 
 ```mermaid
 flowchart TB
-    subgraph P0[Stage P0: Inputs]
-        X1[Processed data and targets]
-        X2[Atomic graph features]
+    subgraph DP["Data Pipeline (Section 15.0)"]
+        DP1["Raw: .rho grids,<br/>.xyz coords, props"]
+        DP2[["Parse & normalize<br/>(load, crop, resample)"]]
+        DP3[["Build graph<br/>(edges, features)"]]
+        DP4[["Engineer features<br/>(Z_i, d_ij, angles)"]]
+        DP5[["Construct spectrum<br/>targets (Lorentzian)"]]
+        DP6[["Batch & split<br/>(train/val/test)"]]
+    end
+
+    subgraph P0[Stage P0: Inputs to V4]
+        X1["Processed data<br/>and targets"]
+        X2["Atomic graph<br/>features"]
     end
 
     subgraph P1[Stage P1: Train Base Predictor]
@@ -505,6 +627,14 @@ flowchart TB
         F2[Add new reference calculations]
         F3[Retrain with updated set]
     end
+
+    DP1 --> DP2
+    DP2 --> DP3
+    DP3 --> DP4
+    DP4 --> DP5
+    DP5 --> DP6
+    DP6 --> X1
+    DP6 --> X2
 
     X1 --> T1
     X2 --> T1
@@ -587,6 +717,44 @@ flowchart LR
     A6 --> A7[Recalibrate threshold tau and weights in E2]
     A7 --> A0
 ```
+
+### 15.5.5 Data Pipeline Integration into V4 Architecture
+
+The **Data Pipeline** (Section 15.0) is the initial intake stage that prepares raw quantum chemistry outputs for consumption by the V4 system. It executes the following transformations:
+
+1. **Raw Input Formats:**
+   - Electron density grids (`.rho` files, typically 64³ or 96³ voxels).
+   - Molecular coordinates (`.xyz`, `.pdb`).
+   - Quantum properties (excitation energies, oscillator strengths, dipole moments).
+
+2. **Processing Stages (DP0–DP12):**
+   - Normalize and crop electron density.
+   - Extract atomic coordinates and construct molecular graph with pairwise distances and angles.
+   - Compute node features (atomic numbers, degrees) and edge features (bond lengths, angles).
+   - Construct spectrum targets using reference excitation energies and a Lorentzian broadening function (as in Step 4 above).
+   - Batch processed samples and stratified train/validation/test split.
+
+3. **Output Schema:**
+   - PyTorch Geometric graph objects with node/edge/global features.
+   - Corresponding absorption spectra discretized on a uniform frequency grid.
+   - Metadata: molecule ID, source file, processing hash.
+
+4. **Integration:**
+   - Processed datasets feed into **Stage P0** of the V4 end-to-end pipeline.
+   - Each training iteration samples a batch from the processed dataset.
+   - Spectrum targets \(A_{true}(\omega)\) are compared against model outputs via loss terms in **(E1)**.
+
+5. **Quality Assurance:**
+   - Validate graph structure (no orphaned nodes, consistent edge counts).
+   - Check spectrum positivity and integrability.
+   - Log processing metrics (grid overlap, feature ranges, target stats) for debugging.
+
+This separation of concerns allows:
+- **Cacheability:** Processed datasets can be reused across multiple training runs.
+- **Reproducibility:** Processing pipeline versions are tracked alongside raw data sources.
+- **Scalability:** New raw data can be automatically ingested and added to the training set via the active-learning loop.
+
+---
 
 ### 15.6 Stage-to-Equation Mapping Table
 
