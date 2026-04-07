@@ -11,7 +11,9 @@ import re
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 try:
     from models.mace_net import SpectralEquivariantGNN
+    from models.mace_net_v1 import SpectralEquivariantGNNV1
     from utils.model_diagnostics import plot_predict_vs_real_parity, plot_complex_poles, calc_spectral_overlap_score
+    from utils.hybrid_inference import decode_peak_set, combine_two_tower_predictions
     from train.dataset import SpectrumDataset
 except ImportError:
     pass
@@ -26,18 +28,62 @@ app_mode = st.sidebar.radio(
     ["Overview & Theory", "1. Data Extraction (Padé+LASSO)", "2. Model Training", "3. GNN Inference & Spectra", "4. Scientific Diagnostics", "5. Dynamic 3D Atom Visualizer"]
 )
 
-# HELPER: Load trained model
+inference_mode = st.sidebar.selectbox(
+    "Inference Mode",
+    ["V2 single tower", "V3 hybrid two-tower"],
+)
+
+# HELPER: Load trained models (V2 amp tower + optional V1/V3 freq tower)
 @st.cache_resource
-def load_model():
+def load_models():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = SpectralEquivariantGNN(node_features_in=5, K_max=64)
-    ckpt_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'best_model.pth'))
-    if os.path.exists(ckpt_path):
+
+    amp_model = SpectralEquivariantGNN(node_features_in=5, K_max=64)
+    amp_ckpt = None
+    amp_candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'v3_amp_tower.pth')),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'best_model.pth')),
+    ]
+    for ckpt_path in amp_candidates:
+        if os.path.exists(ckpt_path):
+            state_dict = torch.load(ckpt_path, map_location=device, weights_only=True)
+            amp_model.load_state_dict(state_dict, strict=False)
+            amp_ckpt = ckpt_path
+            break
+    amp_model = amp_model.to(device)
+    amp_model.eval()
+
+    freq_model = None
+    freq_ckpt = None
+    freq_candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'best_model_v1.pth')),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'v3_freq_tower.pth')),
+    ]
+    for ckpt_path in freq_candidates:
+        if not os.path.exists(ckpt_path):
+            continue
+
         state_dict = torch.load(ckpt_path, map_location=device, weights_only=True)
-        model.load_state_dict(state_dict, strict=False)
-    model = model.to(device)
-    model.eval()
-    return model, device
+        k_max = 50
+        if "head_freq.2.bias" in state_dict:
+            k_max = int(state_dict["head_freq.2.bias"].numel())
+        elif "head_freq.2.weight" in state_dict:
+            k_max = int(state_dict["head_freq.2.weight"].shape[0])
+
+        freq_model = SpectralEquivariantGNNV1(node_features_in=5, K_max=k_max)
+        freq_model.load_state_dict(state_dict, strict=False)
+        freq_model = freq_model.to(device)
+        freq_model.eval()
+        freq_ckpt = ckpt_path
+        break
+
+    return {
+        "device": device,
+        "amp_model": amp_model,
+        "amp_ckpt": amp_ckpt,
+        "freq_model": freq_model,
+        "freq_ckpt": freq_ckpt,
+    }
 
 # HELPER: Load datasets
 @st.cache_data
@@ -53,7 +99,7 @@ def load_datasets():
     return datasets
 
 # HELPER: Get Predictions
-def get_predictions(model, dataset_name):
+def get_predictions(models, dataset_name, mode="V2 single tower"):
     # Actually build a proper batch using the dataset class and a dataloader
     data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'processed'))
     dataset = SpectrumDataset(data_dir)
@@ -73,54 +119,26 @@ def get_predictions(model, dataset_name):
     # We must patch the batch attribute since we aren't using a DataLoader
     graph_data.batch = torch.zeros(graph_data.num_nodes, dtype=torch.long)
     graph_data.y_freq_batch = torch.zeros(graph_data.y_freq.shape[0], dtype=torch.long)
-    device = next(model.parameters()).device
+    amp_model = models["amp_model"]
+    freq_model = models["freq_model"]
+    device = models["device"]
     graph_data = graph_data.to(device)
     
     with torch.no_grad():
-        pred_dict = model(graph_data)
-
-    # Support both legacy and current output key conventions.
-    prob_key = "prob" if "prob" in pred_dict else "peak_probs"
-    freq_key = "freq" if "freq" in pred_dict else "frequencies"
-    amp_key = "amp" if "amp" in pred_dict else "amplitudes"
-
-    probs_t = pred_dict[prob_key].squeeze(0)
-    if prob_key == "peak_probs":
-        probs_t = torch.sigmoid(probs_t)
-
-    freqs_t = pred_dict[freq_key].squeeze(0)
-    amps_t = pred_dict[amp_key].squeeze(0)
-
-    probs = probs_t.detach().cpu().numpy()
-    pred_w_all = freqs_t.detach().cpu().numpy()
-    amp_np = amps_t.detach().cpu().numpy()
-
-    # Current model predicts scalar amplitudes; keep compatibility for vector amplitudes.
-    if amp_np.ndim == 2:
-        pred_b_all = np.linalg.norm(amp_np, axis=1)
-    else:
-        pred_b_all = np.abs(amp_np)
-
-    count_t = pred_dict.get("count")
-    if count_t is not None:
-        count_val = float(count_t.squeeze(0).detach().cpu().item())
-        top_k = int(np.clip(np.rint(count_val), 1, probs.shape[0]))
-        top_idx = np.argsort(probs)[-top_k:]
-        pred_w = pred_w_all[top_idx]
-        pred_b = pred_b_all[top_idx]
-        pred_probs = probs[top_idx]
-    else:
-        mask = probs > 0.65
-        if np.count_nonzero(mask) == 0:
-            top_k = min(5, probs.shape[0])
-            top_idx = np.argsort(probs)[-top_k:]
-            pred_w = pred_w_all[top_idx]
-            pred_b = pred_b_all[top_idx]
-            pred_probs = probs[top_idx]
+        amp_pred = amp_model(graph_data)
+        if mode == "V3 hybrid two-tower" and freq_model is not None:
+            freq_pred = freq_model(graph_data)
+            pred_w, pred_b, pred_probs = combine_two_tower_predictions(
+                freq_pred,
+                amp_pred,
+                prob_threshold=0.65,
+                fallback_top_k=5,
+            )
         else:
-            pred_w = pred_w_all[mask]
-            pred_b = pred_b_all[mask]
-            pred_probs = probs[mask]
+            dec = decode_peak_set(amp_pred, prob_threshold=0.65, fallback_top_k=5)
+            pred_w = dec["freq"]
+            pred_b = dec["amp"]
+            pred_probs = dec["prob"]
     
     # True values
     true_w = graph_data.y_freq.detach().cpu().numpy()
@@ -211,18 +229,25 @@ elif app_mode == "3. GNN Inference & Spectra":
     st.title("Step 3: Real-time Spectra Inference")
     st.markdown("Evaluate the trained GNN physically across available test domains: Ammonia and Water.")
     
-    model, device = load_model()
+    models = load_models()
     datasets = load_datasets()
     if not datasets:
         st.error("No dataset available.")
         st.stop()
+
+    if inference_mode == "V3 hybrid two-tower" and models["freq_model"] is None:
+        st.warning("Hybrid mode requested, but no frequency tower checkpoint was found. Falling back to V2 single tower.")
+
+    amp_name = os.path.basename(models["amp_ckpt"]) if models["amp_ckpt"] else "random-init"
+    freq_name = os.path.basename(models["freq_ckpt"]) if models["freq_ckpt"] else "not-loaded"
+    st.caption(f"Amp tower checkpoint: {amp_name} | Freq tower checkpoint: {freq_name}")
         
     selected_mol = st.selectbox("Select Molecule for Evaluation", list(datasets.keys()))
         
     if st.button("Predict Spectrum"):
         with st.spinner("Running E(3)-Equivariant GNN inference..."):
             try:
-                preds, truths, probs = get_predictions(model, selected_mol)
+                preds, truths, probs = get_predictions(models, selected_mol, mode=inference_mode)
                 if preds is None:
                     st.error("Failed to predict.")
                     st.stop()
@@ -278,14 +303,14 @@ elif app_mode == "4. Scientific Diagnostics":
     st.title("Step 4: Diagnostics & Scientific Assessment")
     st.markdown("Advanced analytical tools to assess quantum constraints, bipartite match accuracy, and spectral divergence.")
 
-    model, device = load_model()
+    models = load_models()
     datasets = load_datasets()
     if not datasets:
          st.error("No dataset available.")
          st.stop()
          
     selected_mol = st.selectbox("Select Molecule for Diagnostics", list(datasets.keys()))
-    preds, truths, probs = get_predictions(model, selected_mol)
+    preds, truths, probs = get_predictions(models, selected_mol, mode=inference_mode)
     
     if preds is None:
         st.stop()
@@ -405,8 +430,8 @@ elif app_mode == "5. Dynamic 3D Atom Visualizer":
         with col2:
             st.subheader("Global Observable: Dipole Moment")
             
-            model, device = load_model()
-            preds, truths, probs = get_predictions(model, 'ammonia')
+            models = load_models()
+            preds, truths, probs = get_predictions(models, 'ammonia', mode=inference_mode)
             times = np.linspace(0, 400, 400)
             true_signal = np.zeros_like(times)
             pred_signal = np.zeros_like(times)
