@@ -17,6 +17,7 @@ This repository predicts absorption spectra from molecular geometry using RT-TDD
 Current operational default:
 - V3 hybrid inference.
 - Automatic fallback to the strongest amplitude checkpoint.
+- V4 is archived as a failed experiment and removed from the active dashboard workflow.
 
 ## End-To-End Pipeline
 
@@ -83,6 +84,8 @@ flowchart TD
     E --> F[Spectrum reconstruction]
 ```
 
+  V3 hybrid now supports amplitude-guided overflow frequency slots so predictions are not artificially capped by legacy V1 slot capacity.
+
 ## Why This Structure
 
 - Frequencies are easier to learn with a strong prior from the legacy V1 tower.
@@ -106,15 +109,16 @@ Latest stable evaluation baseline:
 |---|---|---:|---:|---:|---:|---:|
 | ammonia | V1 | 0.03000 | 1.947729e-03 | 0.5240 | 41 | 39 |
 | ammonia | V2 | 0.71727 | 1.083328e-04 | 0.5434 | 39 | 39 |
-| ammonia | Hybrid | 0.03560 | 1.719348e-04 | 0.6208 | 39 | 39 |
+| ammonia | Hybrid | 0.03560 | 1.419743e-04 | 0.6472 | 39 | 39 |
 | water | V1 | 0.04456 | 2.305660e-03 | 0.4510 | 41 | 55 |
 | water | V2 | 0.32185 | 6.498991e-05 | 0.5311 | 56 | 55 |
-| water | Hybrid | 0.04180 | 1.033901e-04 | 0.4666 | 50 | 55 |
+| water | Hybrid | 0.22634 | 9.328221e-05 | 0.4924 | 56 | 55 |
 
 Takeaways:
 - V1 remains the strongest frequency prior on the tiny dataset.
 - V2 remains the best amplitude learner in direct amplitude MAE.
-- Hybrid usually gives the best overall balance and the best reported overlap when the checkpoint gate selects the right amplitude model.
+- Hybrid gives the best overlap with the baseline amp checkpoint and overflow-enabled decode.
+- Fresh retraining on this tiny dataset did not beat the baseline amp checkpoint, so production keeps `checkpoints/best_model.pth` for the amp tower.
 
 ## Dashboard
 
@@ -154,6 +158,8 @@ Train the current V3 workflow:
   --epochs_freq 0 \
   --epochs_amp 60 \
   --batch_size 1 \
+  --val_ratio 0.5 \
+  --amp_early_stop_patience 12 \
   --save_dir checkpoints \
   --log_file results/v3_train_output.log \
   --init_freq_ckpt checkpoints/best_model_v1.pth \
@@ -166,14 +172,33 @@ Evaluate V1 vs V2 vs Hybrid:
 /home/user/Electron-GNN/EGNN/bin/python scripts/evaluate_two_tower.py \
   --data_dir data/processed \
   --v1_ckpt checkpoints/best_model_v1.pth \
-  --v2_ckpt checkpoints/best_model.pth
+  --v2_ckpt checkpoints/best_model.pth \
+  --prob_threshold 0.65 \
+  --fallback_topk 8 \
+  --hybrid_min_freq_separation 0.005
 ```
 
 The stable evaluation command intentionally uses `best_model.pth` for the amplitude tower because the newer `v3_amp_tower.pth` can underperform on this small dataset.
 
+Latest retrain benchmark artifact:
+- `results/v3_retrain_eval_summary.txt`
+
+If you need strict legacy behavior without overflow slots:
+
+```bash
+/home/user/Electron-GNN/EGNN/bin/python scripts/evaluate_two_tower.py \
+  --data_dir data/processed \
+  --v1_ckpt checkpoints/best_model_v1.pth \
+  --v2_ckpt checkpoints/best_model.pth \
+  --prob_threshold 0.65 \
+  --fallback_topk 8 \
+  --disable_hybrid_amp_overflow
+```
+
 ## Reports And Documentation
 
 - Current authoritative V3 report: [docs/REPORT_V3_TWO_TOWER_HYBRID.md](docs/REPORT_V3_TWO_TOWER_HYBRID.md)
+- Detailed V3 end-to-end pipeline report with equations: [docs/REPORT_V3_END_TO_END_PIPELINE_DETAILED.md](docs/REPORT_V3_END_TO_END_PIPELINE_DETAILED.md)
 - V2 architecture report: [docs/REPORT_V2_ARCHITECTURE_AND_SCALING.md](docs/REPORT_V2_ARCHITECTURE_AND_SCALING.md)
 - Data generation playbook: [docs/PROFESSOR_REQUESTS_AND_DATA_GENERATION.md](docs/PROFESSOR_REQUESTS_AND_DATA_GENERATION.md)
 
@@ -208,6 +233,18 @@ flowchart LR
 - The dataset is still too small for robust amplitude generalization.
 - Frequency retraining at high K_max must be guarded with warmup freezing, teacher regularization, and early stopping.
 - The hybrid stack should always be validated against the current report and dashboard comparison panel before checkpoint promotion.
+
+## Archived Experiments
+
+V4 verifier/refiner code remains in the repository for reference only.
+
+Archive location:
+- `archive/v4_failed_experiment/`
+- index: `archive/v4_failed_experiment/README.md`
+
+- It is not part of the active dashboard mode list.
+- It is not used in current model selection.
+- The production path is V3 hybrid training and inference.
 
 ## Extension Scope
 

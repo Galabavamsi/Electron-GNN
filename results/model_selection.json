@@ -1,0 +1,12 @@
+{
+  "generated_at": "2026-04-08T00:00:00+00:00",
+  "data_dir": "data/processed",
+  "recommended_mode": "V3 hybrid two-tower",
+  "reason": "V4 archived as failed experiment; V3 is the active production mode.",
+  "v3_decode": {
+    "prob_threshold": 0.65,
+    "fallback_topk": 8,
+    "allow_amp_overflow": true,
+    "min_freq_separation": 0.005
+  }
+}

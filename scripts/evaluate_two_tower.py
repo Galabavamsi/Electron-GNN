@@ -99,6 +99,8 @@ def main():
     parser.add_argument("--v2_kmax", type=int, default=64)
     parser.add_argument("--prob_threshold", type=float, default=0.65)
     parser.add_argument("--fallback_topk", type=int, default=5)
+    parser.add_argument("--hybrid_min_freq_separation", type=float, default=0.005)
+    parser.add_argument("--disable_hybrid_amp_overflow", action="store_true")
     args = parser.parse_args()
 
     if not os.path.exists(args.v1_ckpt):
@@ -143,6 +145,8 @@ def main():
             pred_v2,
             prob_threshold=args.prob_threshold,
             fallback_top_k=args.fallback_topk,
+            allow_amp_overflow=not args.disable_hybrid_amp_overflow,
+            min_freq_separation=args.hybrid_min_freq_separation,
         )
 
         rows = [

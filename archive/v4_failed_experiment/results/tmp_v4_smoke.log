@@ -1,0 +1,12 @@
+Using device: cuda
+Writing log to: /home/user/Electron-GNN/results/tmp_v4_smoke.log
+Train/val split: train=1 val=1 (val_ratio=0.50)
+Warm-started V4 from /home/user/Electron-GNN/checkpoints/best_model.pth (105/105 tensors loaded)
+Starting V4 training for 1 epochs
+
+Epoch 1/1
+Train total=4.0924 bip=3.9185 spec=0.5015 phys=0.0235 trust=0.2356
+Val   total=4.0896 bip=3.7403 spec=1.0134 phys=0.0453 trust=0.4545
+Val verifier: kk=0.0021 pos=0.0000 sum=0.4524 smooth=0.0000 stab=0.0000
+New best V4 checkpoint saved: checkpoints/tmp_v4_smoke/best_model_v4.pth (val_total=4.0896)
+V4 training complete.

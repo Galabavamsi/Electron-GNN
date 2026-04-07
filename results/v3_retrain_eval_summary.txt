@@ -1,0 +1,55 @@
+# V3 Retrain Evaluation Summary (2026-04-08)
+
+## Baseline amp checkpoint (best_model.pth)
+Using device: cuda
+
+Sample: ammonia
+V1                 freq_mae=0.03000 amp_mae=1.947729e-03 overlap=0.5240 pred= 41 true= 39
+V2                 freq_mae=0.71727 amp_mae=1.083328e-04 overlap=0.5434 pred= 39 true= 39
+Hybrid             freq_mae=0.03560 amp_mae=1.419743e-04 overlap=0.6472 pred= 39 true= 39
+
+Sample: water
+V1                 freq_mae=0.04456 amp_mae=2.305660e-03 overlap=0.4510 pred= 41 true= 55
+V2                 freq_mae=0.32185 amp_mae=6.498991e-05 overlap=0.5311 pred= 56 true= 55
+Hybrid             freq_mae=0.22634 amp_mae=9.328221e-05 overlap=0.4924 pred= 56 true= 55
+
+Averages
+V1                 freq_mae=0.03728 amp_mae=2.126695e-03 overlap=0.4875
+V2                 freq_mae=0.51956 amp_mae=8.666136e-05 overlap=0.5373
+Hybrid             freq_mae=0.13097 amp_mae=1.176282e-04 overlap=0.5698
+
+## Retrained amp checkpoint (v3_amp_tower.pth)
+Using device: cuda
+
+Sample: ammonia
+V1                 freq_mae=0.03000 amp_mae=1.947729e-03 overlap=0.5240 pred= 41 true= 39
+V2                 freq_mae=0.88691 amp_mae=7.368602e-05 overlap=0.4298 pred= 39 true= 39
+Hybrid             freq_mae=0.03560 amp_mae=1.845578e-04 overlap=0.5498 pred= 39 true= 39
+
+Sample: water
+V1                 freq_mae=0.04456 amp_mae=2.305660e-03 overlap=0.4510 pred= 41 true= 55
+V2                 freq_mae=0.50220 amp_mae=6.502168e-05 overlap=0.5474 pred= 55 true= 55
+Hybrid             freq_mae=0.29987 amp_mae=6.598743e-05 overlap=0.4123 pred= 55 true= 55
+
+Averages
+V1                 freq_mae=0.03728 amp_mae=2.126695e-03 overlap=0.4875
+V2                 freq_mae=0.69456 amp_mae=6.935385e-05 overlap=0.4886
+Hybrid             freq_mae=0.16774 amp_mae=1.252726e-04 overlap=0.4811
+
+## Overflow-disabled control
+Using device: cuda
+
+Sample: ammonia
+V1                 freq_mae=0.03000 amp_mae=1.947729e-03 overlap=0.5240 pred= 41 true= 39
+V2                 freq_mae=0.71727 amp_mae=1.083328e-04 overlap=0.5434 pred= 39 true= 39
+Hybrid             freq_mae=0.03560 amp_mae=1.419743e-04 overlap=0.6472 pred= 39 true= 39
+
+Sample: water
+V1                 freq_mae=0.04456 amp_mae=2.305660e-03 overlap=0.4510 pred= 41 true= 55
+V2                 freq_mae=0.32185 amp_mae=6.498991e-05 overlap=0.5311 pred= 56 true= 55
+Hybrid             freq_mae=0.04180 amp_mae=1.033901e-04 overlap=0.4666 pred= 50 true= 55
+
+Averages
+V1                 freq_mae=0.03728 amp_mae=2.126695e-03 overlap=0.4875
+V2                 freq_mae=0.51956 amp_mae=8.666136e-05 overlap=0.5373
+Hybrid             freq_mae=0.03870 amp_mae=1.226822e-04 overlap=0.5569

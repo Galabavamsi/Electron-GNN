@@ -10,12 +10,14 @@ import torch.nn.functional as F
 import torch.optim as optim
 from scipy.optimize import linear_sum_assignment
 from torch_geometric.loader import DataLoader
+from torch.utils.data import Subset
 from tqdm import tqdm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from models.mace_net import SpectralEquivariantGNN
 from models.mace_net_v1 import SpectralEquivariantGNNV1
+from utils.hybrid_inference import decode_peak_set
 try:
     from train.dataset import SpectrumDataset
     from train.losses import bipartite_matching_loss, auto_differential_spectrum_loss
@@ -74,6 +76,21 @@ def infer_v1_kmax_from_checkpoint(ckpt_path):
     if "head_freq.2.weight" in state:
         return int(state["head_freq.2.weight"].shape[0])
     return None
+
+
+def make_train_val_indices(num_samples, val_ratio, seed):
+    if num_samples < 2 or val_ratio <= 0.0:
+        idx = list(range(num_samples))
+        return idx, idx
+
+    n_val = int(round(num_samples * val_ratio))
+    n_val = max(1, min(num_samples - 1, n_val))
+
+    rng = np.random.default_rng(seed)
+    perm = rng.permutation(num_samples).tolist()
+    val_idx = perm[:n_val]
+    train_idx = perm[n_val:]
+    return train_idx, val_idx
 
 
 def split_targets_by_graph(data_batch, batch_size, device):
@@ -249,12 +266,67 @@ def eval_amp_epoch(model, dataloader, device):
     return epoch_bip / len(dataloader), epoch_spec / len(dataloader)
 
 
+def _lorentzian_spectrum_np(freqs, amps, omega, gamma=0.015):
+    spec = np.zeros_like(omega)
+    if len(freqs) == 0:
+        return spec
+    for w_k, b_k in zip(freqs, amps):
+        spec += b_k * (gamma / ((omega - w_k) ** 2 + gamma**2))
+    return spec
+
+
+def _spectral_overlap_np(pred_w, pred_b, true_w, true_b):
+    omega = np.linspace(0.01, 5.0, 512)
+    spec_p = _lorentzian_spectrum_np(pred_w, pred_b, omega)
+    spec_t = _lorentzian_spectrum_np(true_w, true_b, omega)
+    denom = np.linalg.norm(spec_p) * np.linalg.norm(spec_t)
+    if denom <= 1e-12:
+        return 0.0
+    return float(np.dot(spec_p, spec_t) / denom)
+
+
+def eval_amp_decode_quality(model, dataloader, device, prob_threshold=0.65, fallback_topk=8):
+    model.eval()
+    scores = []
+
+    with torch.no_grad():
+        for batch in dataloader:
+            batch = batch.to(device)
+            pred = model(batch)
+            batch_size = pred["prob"].shape[0]
+            targets = split_targets_by_graph(batch, batch_size, device)
+
+            for batch_idx in range(batch_size):
+                dec = decode_peak_set(
+                    pred,
+                    batch_idx=batch_idx,
+                    prob_threshold=prob_threshold,
+                    fallback_top_k=fallback_topk,
+                    use_count_head=True,
+                )
+                pred_w = np.asarray(dec["freq"], dtype=np.float64)
+                pred_b = np.asarray(dec["amp"], dtype=np.float64)
+
+                true_w_t, true_b_t = targets[batch_idx]
+                true_w = true_w_t.detach().cpu().numpy().astype(np.float64)
+                true_b = np.abs(true_b_t.detach().cpu().numpy().astype(np.float64))
+
+                overlap = _spectral_overlap_np(pred_w, pred_b, true_w, true_b)
+                count_penalty = abs(len(pred_w) - len(true_w)) / max(1, len(true_w))
+                scores.append(overlap - 0.25 * count_penalty)
+
+    if not scores:
+        return -1e9
+    return float(np.mean(scores))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Train Version 3 two-tower hybrid models")
     parser.add_argument("--data_dir", type=str, default="data/processed")
     parser.add_argument("--save_dir", type=str, default="checkpoints")
     parser.add_argument("--log_file", type=str, default="results/v3_train_output.log")
     parser.add_argument("--batch_size", type=int, default=2)
+    parser.add_argument("--val_ratio", type=float, default=0.5)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--grad_clip", type=float, default=1.0)
 
@@ -280,6 +352,8 @@ def main():
     parser.add_argument("--amp_scale", type=float, default=1e-3)
     parser.add_argument("--lambda_spectrum", type=float, default=0.3)
     parser.add_argument("--init_amp_ckpt", type=str, default="checkpoints/best_model.pth")
+    parser.add_argument("--amp_early_stop_patience", type=int, default=12)
+    parser.add_argument("--amp_score_min_delta", type=float, default=1e-4)
 
     args = parser.parse_args()
 
@@ -310,9 +384,18 @@ def main():
     if len(dataset) == 0:
         raise RuntimeError(f"No dataset found in {args.data_dir}")
 
-    # With current tiny dataset we use same split for train/val.
-    train_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
+    train_idx, val_idx = make_train_val_indices(len(dataset), args.val_ratio, args.seed)
+    if len(dataset) >= 2 and args.val_ratio > 0.0 and train_idx != val_idx:
+        train_dataset = Subset(dataset, train_idx)
+        val_dataset = Subset(dataset, val_idx)
+        log(f"Train/val split: train={len(train_idx)} val={len(val_idx)} (val_ratio={args.val_ratio:.2f})")
+    else:
+        train_dataset = dataset
+        val_dataset = dataset
+        log("Using full dataset for both train and val (split disabled or dataset too small).")
+
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
     freq_ckpt_out = os.path.join(args.save_dir, "v3_freq_tower.pth")
     amp_ckpt_out = os.path.join(args.save_dir, "v3_amp_tower.pth")
@@ -428,6 +511,8 @@ def main():
         )
 
         best_amp = float("inf")
+        best_amp_score = -1e9
+        no_improve_amp = 0
         for epoch in range(1, args.epochs_amp + 1):
             log(f"\n[Amp Tower] Epoch {epoch}/{args.epochs_amp}")
             train_bip, train_spec = train_amp_epoch(
@@ -439,19 +524,43 @@ def main():
                 grad_clip=args.grad_clip,
             )
             val_bip, val_spec = eval_amp_epoch(amp_model, val_loader, device)
+            val_quality = eval_amp_decode_quality(
+                amp_model,
+                val_loader,
+                device,
+                prob_threshold=0.65,
+                fallback_topk=8,
+            )
 
             val_total = val_bip + args.lambda_spectrum * val_spec
             scheduler_a.step(val_total)
 
             log(
                 f"Amp tower - train(bip/spec): {train_bip:.4f}/{train_spec:.4f} "
-                f"val(bip/spec): {val_bip:.4f}/{val_spec:.4f} total={val_total:.4f}"
+                f"val(bip/spec): {val_bip:.4f}/{val_spec:.4f} total={val_total:.4f} "
+                f"quality={val_quality:.4f}"
             )
 
-            if val_total < best_amp:
+            improved_quality = val_quality > (best_amp_score + args.amp_score_min_delta)
+            improved_total = val_total < best_amp
+            if improved_quality or (abs(val_quality - best_amp_score) <= args.amp_score_min_delta and improved_total):
                 best_amp = val_total
+                best_amp_score = val_quality
                 torch.save(amp_model.state_dict(), amp_ckpt_out)
-                log(f"Saved best amp tower: {amp_ckpt_out} (val_total={best_amp:.4f})")
+                log(
+                    f"Saved best amp tower: {amp_ckpt_out} "
+                    f"(val_total={best_amp:.4f}, quality={best_amp_score:.4f})"
+                )
+                no_improve_amp = 0
+            else:
+                no_improve_amp += 1
+
+            if no_improve_amp >= args.amp_early_stop_patience:
+                log(
+                    f"Early stopping amp tower after {no_improve_amp} non-improving epochs "
+                    f"(patience={args.amp_early_stop_patience})."
+                )
+                break
 
     log("\nV3 two-tower training complete.")
 

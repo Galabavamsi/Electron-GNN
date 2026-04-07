@@ -51,7 +51,7 @@ def _extract_common_outputs(pred_dict, batch_idx=0):
     }
 
 
-def decode_peak_set(pred_dict, batch_idx=0, prob_threshold=0.65, fallback_top_k=5):
+def decode_peak_set(pred_dict, batch_idx=0, prob_threshold=0.65, fallback_top_k=5, use_count_head=True):
     """Decode a variable-length peak set from fixed-size slot predictions."""
     out = _extract_common_outputs(pred_dict, batch_idx=batch_idx)
     probs = out["probs"]
@@ -59,7 +59,7 @@ def decode_peak_set(pred_dict, batch_idx=0, prob_threshold=0.65, fallback_top_k=
     amps = out["amps"]
     count_val = out["count"]
 
-    if count_val is not None:
+    if use_count_head and count_val is not None:
         top_k = int(np.clip(np.rint(count_val), 1, probs.shape[0]))
         idx = np.argsort(probs)[-top_k:]
     else:
@@ -90,12 +90,16 @@ def combine_two_tower_predictions(
     prob_threshold=0.65,
     fallback_top_k=5,
     amp_conf_penalty=0.05,
+    allow_amp_overflow=True,
+    min_freq_separation=0.005,
 ):
     """
-    Hybrid decode:
-    - frequencies come from frequency tower
-    - cardinality prefers amplitude tower count head when available
-    - amplitudes come from amplitude tower matched by nearest predicted frequencies
+        Hybrid decode:
+        - primary frequencies come from the frequency tower
+        - cardinality prefers amplitude tower count head when available
+        - optional overflow frequencies are borrowed from amplitude tower when desired
+            count exceeds available frequency slots
+        - amplitudes come from amplitude tower matched by nearest predicted frequencies
     """
     freq_out = _extract_common_outputs(freq_pred_dict, batch_idx=batch_idx)
     amp_out = _extract_common_outputs(amp_pred_dict, batch_idx=batch_idx)
@@ -127,6 +131,33 @@ def combine_two_tower_predictions(
     amp_w_all = amp_out["freqs"]
     amp_b_all = amp_out["amps"]
     amp_p_all = amp_out["probs"]
+
+    if (
+        allow_amp_overflow
+        and desired_count is not None
+        and desired_count > pred_w.shape[0]
+        and amp_w_all.size > 0
+    ):
+        extra_needed = int(desired_count - pred_w.shape[0])
+        taken_w = pred_w.copy()
+        extra_w = []
+        extra_p = []
+
+        for idx in np.argsort(amp_p_all)[::-1]:
+            cand_w = float(amp_w_all[idx])
+            if taken_w.size > 0 and np.min(np.abs(taken_w - cand_w)) < float(min_freq_separation):
+                continue
+
+            extra_w.append(cand_w)
+            extra_p.append(float(amp_p_all[idx]))
+            taken_w = np.append(taken_w, cand_w)
+
+            if len(extra_w) >= extra_needed:
+                break
+
+        if extra_w:
+            pred_w = np.concatenate([pred_w, np.asarray(extra_w, dtype=pred_w.dtype)])
+            pred_p_freq = np.concatenate([pred_p_freq, np.asarray(extra_p, dtype=pred_p_freq.dtype)])
 
     if pred_w.size == 0:
         return pred_w, np.array([], dtype=float), np.array([], dtype=float)

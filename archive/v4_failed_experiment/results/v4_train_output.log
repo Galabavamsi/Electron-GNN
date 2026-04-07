@@ -1,0 +1,211 @@
+Using device: cuda
+Writing log to: /home/user/Electron-GNN/results/v4_train_output.log
+Train/val split: train=1 val=1 (val_ratio=0.50)
+Warm-started V4 from /home/user/Electron-GNN/checkpoints/best_model.pth (105/105 tensors loaded)
+Starting V4 training for 40 epochs
+
+Epoch 1/40
+Train total=4.0924 bip=3.9185 spec=0.5015 phys=0.0235 trust=0.2356
+Val   total=4.0896 bip=3.7403 spec=1.0134 phys=0.0453 trust=0.4545
+Val verifier: kk=0.0021 pos=0.0000 sum=0.4524 smooth=0.0000 stab=0.0000
+New best V4 checkpoint saved: checkpoints/best_model_v4.pth (val_total=4.0896)
+
+Epoch 2/40
+Train total=4.3665 bip=4.1017 spec=0.7335 phys=0.0448 trust=0.4490
+Val   total=4.3539 bip=3.9798 spec=1.0747 phys=0.0517 trust=0.5186
+Val verifier: kk=0.0015 pos=0.0000 sum=0.5170 smooth=0.0000 stab=0.0000
+
+Epoch 3/40
+Train total=3.7410 bip=3.4609 spec=0.7739 phys=0.0480 trust=0.4807
+Val   total=4.0638 bip=3.7031 spec=1.0292 phys=0.0519 trust=0.5199
+Val verifier: kk=0.0006 pos=0.0000 sum=0.5194 smooth=0.0000 stab=0.0000
+New best V4 checkpoint saved: checkpoints/best_model_v4.pth (val_total=4.0638)
+
+Epoch 4/40
+Train total=4.2627 bip=3.9833 spec=0.7992 phys=0.0396 trust=0.3980
+Val   total=3.9747 bip=3.5927 spec=1.0959 phys=0.0533 trust=0.5339
+Val verifier: kk=0.0015 pos=0.0000 sum=0.5325 smooth=0.0000 stab=0.0000
+New best V4 checkpoint saved: checkpoints/best_model_v4.pth (val_total=3.9747)
+
+Epoch 5/40
+Train total=4.0247 bip=3.7890 spec=0.6729 phys=0.0338 trust=0.3386
+Val   total=3.9007 bip=3.5268 spec=1.0836 phys=0.0489 trust=0.4898
+Val verifier: kk=0.0014 pos=0.0000 sum=0.4885 smooth=0.0000 stab=0.0000
+New best V4 checkpoint saved: checkpoints/best_model_v4.pth (val_total=3.9007)
+
+Epoch 6/40
+Train total=4.3707 bip=4.1857 spec=0.5509 phys=0.0198 trust=0.1984
+Val   total=3.7915 bip=3.4506 spec=0.9954 phys=0.0423 trust=0.4235
+Val verifier: kk=0.0007 pos=0.0000 sum=0.4227 smooth=0.0000 stab=0.0000
+New best V4 checkpoint saved: checkpoints/best_model_v4.pth (val_total=3.7915)
+
+Epoch 7/40
+Train total=4.9960 bip=4.8790 spec=0.3678 phys=0.0067 trust=0.0688
+Val   total=4.1309 bip=3.8102 spec=0.9437 phys=0.0377 trust=0.3780
+Val verifier: kk=0.0017 pos=0.0000 sum=0.3763 smooth=0.0000 stab=0.0000
+
+Epoch 8/40
+Train total=5.1639 bip=5.0567 spec=0.3520 phys=0.0016 trust=0.0174
+Val   total=4.0887 bip=3.7903 spec=0.8783 phys=0.0349 trust=0.3487
+Val verifier: kk=0.0000 pos=0.0000 sum=0.3486 smooth=0.0000 stab=0.0000
+
+Epoch 9/40
+Train total=5.4768 bip=5.3471 spec=0.4222 phys=0.0030 trust=0.0304
+Val   total=4.0764 bip=3.7813 spec=0.8632 phys=0.0361 trust=0.3620
+Val verifier: kk=0.0011 pos=0.0000 sum=0.3609 smooth=0.0000 stab=0.0000
+
+Epoch 10/40
+Train total=4.9753 bip=4.8592 spec=0.3799 phys=0.0021 trust=0.0214
+Val   total=4.1567 bip=3.8623 spec=0.8549 phys=0.0380 trust=0.3802
+Val verifier: kk=0.0007 pos=0.0000 sum=0.3795 smooth=0.0000 stab=0.0000
+
+Epoch 11/40
+Train total=4.5707 bip=4.4340 spec=0.4259 phys=0.0090 trust=0.0898
+Val   total=3.9946 bip=3.7158 spec=0.8038 phys=0.0377 trust=0.3777
+Val verifier: kk=0.0009 pos=0.0000 sum=0.3768 smooth=0.0000 stab=0.0000
+
+Epoch 12/40
+Train total=4.2975 bip=4.1516 spec=0.4457 phys=0.0122 trust=0.1219
+Val   total=4.0602 bip=3.7784 spec=0.8155 phys=0.0372 trust=0.3717
+Val verifier: kk=0.0001 pos=0.0000 sum=0.3716 smooth=0.0000 stab=0.0000
+
+Epoch 13/40
+Train total=4.5257 bip=4.3728 spec=0.4683 phys=0.0125 trust=0.1254
+Val   total=4.4101 bip=4.1256 spec=0.8262 phys=0.0366 trust=0.3657
+Val verifier: kk=0.0002 pos=0.0000 sum=0.3656 smooth=0.0000 stab=0.0000
+
+Epoch 14/40
+Train total=5.2824 bip=5.1174 spec=0.5083 phys=0.0125 trust=0.1272
+Val   total=4.2350 bip=3.9626 spec=0.7861 phys=0.0366 trust=0.3663
+Val verifier: kk=0.0006 pos=0.0000 sum=0.3658 smooth=0.0000 stab=0.0000
+
+Epoch 15/40
+Train total=5.0368 bip=4.8726 spec=0.5010 phys=0.0139 trust=0.1392
+Val   total=4.0889 bip=3.8319 spec=0.7341 phys=0.0368 trust=0.3683
+Val verifier: kk=0.0005 pos=0.0000 sum=0.3678 smooth=0.0000 stab=0.0000
+
+Epoch 16/40
+Train total=4.1595 bip=3.9995 spec=0.4801 phys=0.0160 trust=0.1617
+Val   total=4.1552 bip=3.8909 spec=0.7537 phys=0.0382 trust=0.3823
+Val verifier: kk=0.0006 pos=0.0000 sum=0.3818 smooth=0.0000 stab=0.0000
+
+Epoch 17/40
+Train total=4.8071 bip=4.6472 spec=0.4704 phys=0.0188 trust=0.1877
+Val   total=4.0903 bip=3.8181 spec=0.7752 phys=0.0396 trust=0.3965
+Val verifier: kk=0.0000 pos=0.0000 sum=0.3965 smooth=0.0000 stab=0.0000
+
+Epoch 18/40
+Train total=4.9774 bip=4.8196 spec=0.4546 phys=0.0214 trust=0.2155
+Val   total=4.1751 bip=3.8893 spec=0.8159 phys=0.0410 trust=0.4110
+Val verifier: kk=0.0006 pos=0.0000 sum=0.4104 smooth=0.0000 stab=0.0000
+
+Epoch 19/40
+Train total=4.9030 bip=4.7302 spec=0.4959 phys=0.0241 trust=0.2407
+Val   total=4.3671 bip=4.0685 spec=0.8570 phys=0.0414 trust=0.4143
+Val verifier: kk=0.0002 pos=0.0000 sum=0.4141 smooth=0.0000 stab=0.0000
+
+Epoch 20/40
+Train total=4.4611 bip=4.2774 spec=0.5270 phys=0.0256 trust=0.2577
+Val   total=4.4419 bip=4.1341 spec=0.8864 phys=0.0418 trust=0.4191
+Val verifier: kk=0.0011 pos=0.0000 sum=0.4180 smooth=0.0000 stab=0.0000
+
+Epoch 21/40
+Train total=4.4250 bip=4.2359 spec=0.5410 phys=0.0268 trust=0.2688
+Val   total=4.4322 bip=4.1299 spec=0.8694 phys=0.0416 trust=0.4164
+Val verifier: kk=0.0011 pos=0.0000 sum=0.4153 smooth=0.0000 stab=0.0000
+
+Epoch 22/40
+Train total=4.3626 bip=4.1793 spec=0.5220 phys=0.0267 trust=0.2686
+Val   total=4.4563 bip=4.1579 spec=0.8567 phys=0.0414 trust=0.4163
+Val verifier: kk=0.0032 pos=0.0000 sum=0.4131 smooth=0.0000 stab=0.0000
+
+Epoch 23/40
+Train total=4.3249 bip=4.1475 spec=0.5029 phys=0.0265 trust=0.2664
+Val   total=4.2647 bip=3.9639 spec=0.8650 phys=0.0414 trust=0.4141
+Val verifier: kk=0.0004 pos=0.0000 sum=0.4136 smooth=0.0000 stab=0.0000
+
+Epoch 24/40
+Train total=4.2765 bip=4.1037 spec=0.4874 phys=0.0266 trust=0.2659
+Val   total=4.2845 bip=3.9729 spec=0.8996 phys=0.0417 trust=0.4183
+Val verifier: kk=0.0014 pos=0.0000 sum=0.4168 smooth=0.0000 stab=0.0000
+
+Epoch 25/40
+Train total=4.0531 bip=3.8801 spec=0.4863 phys=0.0271 trust=0.2717
+Val   total=4.2917 bip=3.9791 spec=0.9032 phys=0.0416 trust=0.4172
+Val verifier: kk=0.0009 pos=0.0000 sum=0.4163 smooth=0.0000 stab=0.0000
+
+Epoch 26/40
+Train total=4.0175 bip=3.8480 spec=0.4750 phys=0.0270 trust=0.2710
+Val   total=4.3921 bip=4.0884 spec=0.8750 phys=0.0412 trust=0.4135
+Val verifier: kk=0.0016 pos=0.0000 sum=0.4119 smooth=0.0000 stab=0.0000
+
+Epoch 27/40
+Train total=4.0634 bip=3.8952 spec=0.4721 phys=0.0266 trust=0.2663
+Val   total=4.3977 bip=4.0945 spec=0.8743 phys=0.0409 trust=0.4095
+Val verifier: kk=0.0007 pos=0.0000 sum=0.4089 smooth=0.0000 stab=0.0000
+
+Epoch 28/40
+Train total=4.0453 bip=3.8766 spec=0.4738 phys=0.0265 trust=0.2662
+Val   total=4.4016 bip=4.0944 spec=0.8881 phys=0.0408 trust=0.4082
+Val verifier: kk=0.0001 pos=0.0000 sum=0.4081 smooth=0.0000 stab=0.0000
+
+Epoch 29/40
+Train total=4.0242 bip=3.8572 spec=0.4679 phys=0.0266 trust=0.2671
+Val   total=4.4498 bip=4.1396 spec=0.8992 phys=0.0405 trust=0.4053
+Val verifier: kk=0.0006 pos=0.0000 sum=0.4047 smooth=0.0000 stab=0.0000
+
+Epoch 30/40
+Train total=3.9672 bip=3.8026 spec=0.4600 phys=0.0266 trust=0.2672
+Val   total=4.4553 bip=4.1465 spec=0.8961 phys=0.0400 trust=0.4003
+Val verifier: kk=0.0004 pos=0.0000 sum=0.3998 smooth=0.0000 stab=0.0000
+
+Epoch 31/40
+Train total=3.9506 bip=3.7885 spec=0.4523 phys=0.0264 trust=0.2657
+Val   total=4.4422 bip=4.1389 spec=0.8796 phys=0.0394 trust=0.3948
+Val verifier: kk=0.0005 pos=0.0000 sum=0.3943 smooth=0.0000 stab=0.0000
+
+Epoch 32/40
+Train total=3.5106 bip=3.3497 spec=0.4491 phys=0.0261 trust=0.2617
+Val   total=4.5400 bip=4.2408 spec=0.8668 phys=0.0392 trust=0.3928
+Val verifier: kk=0.0015 pos=0.0000 sum=0.3913 smooth=0.0000 stab=0.0000
+
+Epoch 33/40
+Train total=3.5008 bip=3.3406 spec=0.4480 phys=0.0258 trust=0.2591
+Val   total=4.7026 bip=4.4024 spec=0.8702 phys=0.0392 trust=0.3923
+Val verifier: kk=0.0007 pos=0.0000 sum=0.3915 smooth=0.0000 stab=0.0000
+
+Epoch 34/40
+Train total=3.4845 bip=3.3263 spec=0.4416 phys=0.0257 trust=0.2593
+Val   total=4.6427 bip=4.3387 spec=0.8814 phys=0.0395 trust=0.3954
+Val verifier: kk=0.0000 pos=0.0000 sum=0.3954 smooth=0.0000 stab=0.0000
+
+Epoch 35/40
+Train total=3.4872 bip=3.3305 spec=0.4365 phys=0.0258 trust=0.2591
+Val   total=4.6382 bip=4.3345 spec=0.8797 phys=0.0397 trust=0.3978
+Val verifier: kk=0.0008 pos=0.0000 sum=0.3971 smooth=0.0000 stab=0.0000
+
+Epoch 36/40
+Train total=3.4780 bip=3.3215 spec=0.4360 phys=0.0257 trust=0.2573
+Val   total=4.6301 bip=4.3286 spec=0.8723 phys=0.0399 trust=0.4001
+Val verifier: kk=0.0016 pos=0.0000 sum=0.3985 smooth=0.0000 stab=0.0000
+
+Epoch 37/40
+Train total=3.4775 bip=3.3207 spec=0.4373 phys=0.0256 trust=0.2575
+Val   total=4.5922 bip=4.2926 spec=0.8649 phys=0.0401 trust=0.4022
+Val verifier: kk=0.0017 pos=0.0000 sum=0.4005 smooth=0.0000 stab=0.0000
+
+Epoch 38/40
+Train total=3.4449 bip=3.2869 spec=0.4414 phys=0.0256 trust=0.2572
+Val   total=4.5893 bip=4.2889 spec=0.8665 phys=0.0404 trust=0.4044
+Val verifier: kk=0.0010 pos=0.0000 sum=0.4034 smooth=0.0000 stab=0.0000
+
+Epoch 39/40
+Train total=3.4648 bip=3.3065 spec=0.4425 phys=0.0256 trust=0.2566
+Val   total=4.6185 bip=4.3152 spec=0.8753 phys=0.0407 trust=0.4072
+Val verifier: kk=0.0004 pos=0.0000 sum=0.4069 smooth=0.0000 stab=0.0000
+
+Epoch 40/40
+Train total=3.4545 bip=3.2969 spec=0.4396 phys=0.0257 trust=0.2572
+Val   total=4.6209 bip=4.3135 spec=0.8882 phys=0.0410 trust=0.4106
+Val verifier: kk=0.0004 pos=0.0000 sum=0.4102 smooth=0.0000 stab=0.0000
+V4 training complete.

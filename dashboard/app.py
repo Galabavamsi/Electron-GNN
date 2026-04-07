@@ -1,4 +1,5 @@
 import os
+import json
 import re
 import sys
 import glob
@@ -32,6 +33,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 PROCESSED_DIR = os.path.join(ROOT, "data", "processed")
 RESULTS_DIR = os.path.join(ROOT, "results")
 CHECKPOINTS_DIR = os.path.join(ROOT, "checkpoints")
+MODE_SELECTION_PATH = os.path.join(RESULTS_DIR, "model_selection.json")
 
 
 st.set_page_config(
@@ -132,6 +134,21 @@ def glob_signature(pattern):
 
 
 @st.cache_data(ttl=8)
+def load_mode_recommendation(mode_sig):
+    del mode_sig
+    if not os.path.exists(MODE_SELECTION_PATH):
+        return None
+    try:
+        with open(MODE_SELECTION_PATH, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        if not isinstance(payload, dict):
+            return None
+        return payload
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=8)
 def load_datasets(dataset_sig):
     del dataset_sig
     if not os.path.exists(PROCESSED_DIR):
@@ -220,8 +237,8 @@ def _score_amp_checkpoint(model, device, dataset_sig):
 
 
 @st.cache_resource(ttl=20)
-def load_models(amp_ckpt_sig, freq_ckpt_sig, dataset_sig):
-    del amp_ckpt_sig, freq_ckpt_sig
+def load_models(amp_ckpt_sig, freq_ckpt_sig, v4_ckpt_sig, dataset_sig):
+    del amp_ckpt_sig, freq_ckpt_sig, v4_ckpt_sig
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     amp_candidates = [
@@ -280,6 +297,9 @@ def load_models(amp_ckpt_sig, freq_ckpt_sig, dataset_sig):
         freq_ckpt = ckpt
         break
 
+    v4_model = None
+    v4_ckpt = None
+
     return {
         "device": device,
         "amp_model": amp_model,
@@ -287,16 +307,27 @@ def load_models(amp_ckpt_sig, freq_ckpt_sig, dataset_sig):
         "amp_score_map": amp_score_map,
         "freq_model": freq_model,
         "freq_ckpt": freq_ckpt,
+        "v4_model": v4_model,
+        "v4_ckpt": v4_ckpt,
     }
 
 
-def predict_sample(models, sample_name, mode):
+def predict_sample(
+    models,
+    sample_name,
+    mode,
+    decode_prob_threshold=0.65,
+    decode_fallback_topk=8,
+    v3_allow_amp_overflow=True,
+    v3_min_freq_separation=0.005,
+):
     graph_data, true_w, true_b = _prepare_graph(sample_name, models["device"])
     if graph_data is None:
-        return None, None, None
+        return None, None, None, None
 
     amp_model = models["amp_model"]
     freq_model = models["freq_model"]
+    extras = None
 
     with torch.no_grad():
         amp_pred = amp_model(graph_data)
@@ -310,14 +341,16 @@ def predict_sample(models, sample_name, mode):
             pred_w, pred_b, pred_probs = combine_two_tower_predictions(
                 freq_pred,
                 amp_pred,
-                prob_threshold=0.65,
-                fallback_top_k=5,
+                prob_threshold=decode_prob_threshold,
+                fallback_top_k=decode_fallback_topk,
+                allow_amp_overflow=v3_allow_amp_overflow,
+                min_freq_separation=v3_min_freq_separation,
             )
         else:
             dec = decode_peak_set(amp_pred, prob_threshold=0.65, fallback_top_k=5)
             pred_w, pred_b, pred_probs = dec["freq"], dec["amp"], dec["prob"]
 
-    return (pred_w, pred_b, pred_probs), (true_w, true_b), graph_data
+    return (pred_w, pred_b, pred_probs), (true_w, true_b), graph_data, extras
 
 
 def matched_metrics(pred_w, pred_b, true_w, true_b):
@@ -435,6 +468,102 @@ def parse_v3_training_log(log_path, log_sig):
     return data
 
 
+@st.cache_data(ttl=8)
+def parse_v4_training_log(log_path, log_sig):
+    del log_sig
+    data = {
+        "epoch": [],
+        "train_total": [],
+        "train_bip": [],
+        "train_spec": [],
+        "train_phys": [],
+        "train_trust": [],
+        "val_total": [],
+        "val_bip": [],
+        "val_spec": [],
+        "val_phys": [],
+        "val_trust": [],
+        "val_kk": [],
+        "val_pos": [],
+        "val_sum": [],
+        "val_smooth": [],
+        "val_stab": [],
+    }
+
+    if not os.path.exists(log_path):
+        return data
+
+    rows = {}
+    current_epoch = None
+
+    with open(log_path, "r") as f:
+        for line in f:
+            m_ep = re.search(r"Epoch (\d+)/(\d+)", line)
+            if m_ep:
+                current_epoch = int(m_ep.group(1))
+                rows.setdefault(current_epoch, {})
+                continue
+
+            if current_epoch is None:
+                continue
+
+            m_tr = re.search(
+                r"Train total=([\d.]+) bip=([\d.]+) spec=([\d.]+) phys=([\d.]+) trust=([\d.]+)",
+                line,
+            )
+            if m_tr:
+                rows[current_epoch].update(
+                    {
+                        "train_total": float(m_tr.group(1)),
+                        "train_bip": float(m_tr.group(2)),
+                        "train_spec": float(m_tr.group(3)),
+                        "train_phys": float(m_tr.group(4)),
+                        "train_trust": float(m_tr.group(5)),
+                    }
+                )
+                continue
+
+            m_va = re.search(
+                r"Val\s+total=([\d.]+) bip=([\d.]+) spec=([\d.]+) phys=([\d.]+) trust=([\d.]+)",
+                line,
+            )
+            if m_va:
+                rows[current_epoch].update(
+                    {
+                        "val_total": float(m_va.group(1)),
+                        "val_bip": float(m_va.group(2)),
+                        "val_spec": float(m_va.group(3)),
+                        "val_phys": float(m_va.group(4)),
+                        "val_trust": float(m_va.group(5)),
+                    }
+                )
+                continue
+
+            m_vv = re.search(
+                r"Val verifier: kk=([\d.]+) pos=([\d.]+) sum=([\d.]+) smooth=([\d.]+) stab=([\d.]+)",
+                line,
+            )
+            if m_vv:
+                rows[current_epoch].update(
+                    {
+                        "val_kk": float(m_vv.group(1)),
+                        "val_pos": float(m_vv.group(2)),
+                        "val_sum": float(m_vv.group(3)),
+                        "val_smooth": float(m_vv.group(4)),
+                        "val_stab": float(m_vv.group(5)),
+                    }
+                )
+
+    for ep in sorted(rows.keys()):
+        data["epoch"].append(ep)
+        for key in data.keys():
+            if key == "epoch":
+                continue
+            data[key].append(rows[ep].get(key, np.nan))
+
+    return data
+
+
 def render_overview(dataset_df, models):
     st.title("Electron-GNN Observatory")
     st.markdown("A cleaner, vintage-style control room for data quality, training dynamics, and hybrid spectral inference.")
@@ -477,7 +606,7 @@ def render_data_page(datasets, dataset_df):
         st.warning("No processed targets found in data/processed.")
         return
 
-    st.dataframe(dataset_df, use_container_width=True)
+    st.dataframe(dataset_df, width="stretch")
 
     all_freq = []
     all_amp = []
@@ -546,7 +675,9 @@ def render_training_page():
         unsafe_allow_html=True,
     )
 
-    if os.path.basename(selected_log) == "v3_train_output.log":
+    selected_name = os.path.basename(selected_log)
+
+    if selected_name == "v3_train_output.log":
         data = parse_v3_training_log(selected_log, file_signature(selected_log))
 
         c1, c2 = st.columns(2)
@@ -612,7 +743,7 @@ def render_training_page():
         st.pyplot(fig)
 
 
-def render_inference_page(models, datasets, inference_mode):
+def render_inference_page(models, datasets, inference_mode, mode_rec=None):
     st.title("Inference Studio")
 
     amp_name = os.path.basename(models["amp_ckpt"]) if models["amp_ckpt"] else "random-init"
@@ -626,10 +757,48 @@ def render_inference_page(models, datasets, inference_mode):
         st.caption(f"Auto quality gate scores: {score_line}")
 
     sample = st.selectbox("Sample", sorted(datasets.keys()))
-    show_compare = st.checkbox("Show V1 vs V2 vs Hybrid comparison", value=True)
+    show_compare = st.checkbox("Show model comparison table", value=True)
+    v3_decode_cfg = mode_rec.get("v3_decode", {}) if isinstance(mode_rec, dict) else {}
+    default_prob_threshold = float(v3_decode_cfg.get("prob_threshold", 0.65))
+    default_fallback_topk = int(v3_decode_cfg.get("fallback_topk", 8))
+    default_allow_overflow = bool(v3_decode_cfg.get("allow_amp_overflow", True))
+    default_min_sep = float(v3_decode_cfg.get("min_freq_separation", 0.005))
+
+    default_prob_threshold = float(np.clip(default_prob_threshold, 0.05, 0.95))
+    default_fallback_topk = int(np.clip(default_fallback_topk, 1, 64))
+    default_min_sep = float(np.clip(default_min_sep, 0.001, 0.050))
+
+    decode_prob_threshold = default_prob_threshold
+    decode_fallback_topk = default_fallback_topk
+    v3_allow_amp_overflow = default_allow_overflow
+    v3_min_freq_separation = default_min_sep
+    if inference_mode == "V3 hybrid two-tower":
+        decode_prob_threshold = st.slider(
+            "Hybrid decode probability threshold", 0.05, 0.95, default_prob_threshold, 0.01
+        )
+        decode_fallback_topk = st.slider("Hybrid decode fallback top-k", 1, 64, default_fallback_topk, 1)
+        v3_allow_amp_overflow = st.checkbox(
+            "Allow amplitude-guided overflow peaks",
+            value=default_allow_overflow,
+        )
+        v3_min_freq_separation = st.slider(
+            "Overflow minimum frequency separation",
+            0.001,
+            0.050,
+            default_min_sep,
+            0.001,
+        )
 
     if st.button("Run inference"):
-        pred_bundle, truth_bundle, _ = predict_sample(models, sample, inference_mode)
+        pred_bundle, truth_bundle, _, extras = predict_sample(
+            models,
+            sample,
+            inference_mode,
+            decode_prob_threshold=decode_prob_threshold,
+            decode_fallback_topk=decode_fallback_topk,
+            v3_allow_amp_overflow=v3_allow_amp_overflow,
+            v3_min_freq_separation=v3_min_freq_separation,
+        )
         if pred_bundle is None:
             st.error("Sample not found.")
             return
@@ -666,7 +835,7 @@ def render_inference_page(models, datasets, inference_mode):
                 "prob": np.round(pred_probs, 4),
             }
         ).sort_values("prob", ascending=False)
-        st.dataframe(table_df.head(30), use_container_width=True)
+        st.dataframe(table_df.head(30), width="stretch")
 
         if show_compare:
             compare_modes = ["V1 frequency only", "V2 single tower", "V3 hybrid two-tower"]
@@ -675,7 +844,15 @@ def render_inference_page(models, datasets, inference_mode):
             for mode in compare_modes:
                 if mode == "V1 frequency only" and models["freq_model"] is None:
                     continue
-                p_bundle, t_bundle, _ = predict_sample(models, sample, mode)
+                p_bundle, t_bundle, _, _ = predict_sample(
+                    models,
+                    sample,
+                    mode,
+                    decode_prob_threshold=decode_prob_threshold,
+                    decode_fallback_topk=decode_fallback_topk,
+                    v3_allow_amp_overflow=v3_allow_amp_overflow,
+                    v3_min_freq_separation=v3_min_freq_separation,
+                )
                 if p_bundle is None:
                     continue
                 pw, pb, _pp = p_bundle
@@ -694,7 +871,7 @@ def render_inference_page(models, datasets, inference_mode):
                 plots.append((mode, pw, pb, tw, tb))
 
             st.markdown("### Comparison")
-            st.dataframe(pd.DataFrame(rows), use_container_width=True)
+            st.dataframe(pd.DataFrame(rows), width="stretch")
 
             n = len(plots)
             fig, axes = plt.subplots(1, n, figsize=(5.3 * n, 3.8), sharey=True)
@@ -717,7 +894,7 @@ def render_diagnostics_page(models, datasets, inference_mode):
     st.title("Scientific Diagnostics")
     sample = st.selectbox("Sample for diagnostics", sorted(datasets.keys()))
 
-    pred_bundle, truth_bundle, _ = predict_sample(models, sample, inference_mode)
+    pred_bundle, truth_bundle, _, _ = predict_sample(models, sample, inference_mode)
     if pred_bundle is None:
         st.warning("Unable to run diagnostics for this sample.")
         return
@@ -792,11 +969,11 @@ def render_3d_page(models, inference_mode):
         rho_t = va.load_density_file(rho_t_path)
         delta = rho_t - rho_0
         fig_3d = va.plot_molecule_heatmap_3d(atoms, atom_positions, grid_points, delta, threshold=threshold)
-        st.plotly_chart(fig_3d, use_container_width=True)
+        st.plotly_chart(fig_3d, width="stretch")
     else:
         st.info("Selected frame is not available.")
 
-    pred_bundle, truth_bundle, _ = predict_sample(models, "ammonia", inference_mode)
+    pred_bundle, truth_bundle, _, _ = predict_sample(models, "ammonia", inference_mode)
     if pred_bundle is None:
         return
 
@@ -840,14 +1017,30 @@ page = st.sidebar.radio(
     ],
 )
 
+mode_options = [
+    "V3 hybrid two-tower",
+    "V2 single tower",
+    "V1 frequency only",
+]
+mode_sig = file_signature(MODE_SELECTION_PATH)
+mode_rec = load_mode_recommendation(mode_sig)
+default_mode = "V3 hybrid two-tower"
+if mode_rec is not None:
+    rec_mode = mode_rec.get("recommended_mode")
+    if isinstance(rec_mode, str) and rec_mode in mode_options:
+        default_mode = rec_mode
+
 inference_mode = st.sidebar.selectbox(
     "Inference mode",
-    [
-        "V3 hybrid two-tower",
-        "V2 single tower",
-        "V1 frequency only",
-    ],
+    mode_options,
+    index=mode_options.index(default_mode),
 )
+
+if mode_rec is not None:
+    st.sidebar.caption(f"Auto recommendation: {default_mode}")
+    reason = mode_rec.get("reason")
+    if isinstance(reason, str) and reason:
+        st.sidebar.caption(reason)
 
 auto_refresh = st.sidebar.toggle("Auto-refresh data/logs", value=True)
 refresh_sec = st.sidebar.slider("Refresh interval (sec)", 5, 120, 20)
@@ -865,10 +1058,14 @@ freq_ckpt_sig = (
     file_signature(os.path.join(CHECKPOINTS_DIR, "best_model_v1.pth")),
     file_signature(os.path.join(CHECKPOINTS_DIR, "v3_freq_tower.pth")),
 )
+v4_ckpt_sig = (
+    file_signature(os.path.join(CHECKPOINTS_DIR, "best_model_v4.pth")),
+    file_signature(os.path.join(CHECKPOINTS_DIR, "last_model_v4.pth")),
+)
 
 datasets, _pt_files = load_datasets(processed_sig)
 dataset_df = summarize_datasets(processed_sig)
-models = load_models(amp_ckpt_sig, freq_ckpt_sig, processed_sig)
+models = load_models(amp_ckpt_sig, freq_ckpt_sig, v4_ckpt_sig, processed_sig)
 
 if page == "Overview":
     render_overview(dataset_df, models)
@@ -880,7 +1077,7 @@ elif page == "Inference":
     if not datasets:
         st.warning("No processed datasets available.")
     else:
-        render_inference_page(models, datasets, inference_mode)
+        render_inference_page(models, datasets, inference_mode, mode_rec=mode_rec)
 elif page == "Diagnostics":
     if not datasets:
         st.warning("No processed datasets available.")
