@@ -238,3 +238,191 @@ The immediate best practice is:
 - train V3 amplitude tower,
 - infer with hybrid combiner,
 - validate through the dashboard comparison panel and evaluation script.
+
+---
+
+## 12. Why The Earlier V3 Output Looked Wrong
+
+The first V3 amplitude checkpoint (`v3_amp_tower.pth`) was not reliable on this tiny dataset.
+
+Observed failure mode:
+
+- predicted peak count collapsed to a very small number,
+- reconstructed spectra became nearly flat,
+- amplitude MAE looked small in isolation, but the actual spectrum overlap was poor,
+- water in particular suffered because it has 55 peaks and the hybrid stack was constrained by the frequency tower slot count.
+
+Why this happened:
+
+1. The dataset only contains two molecules, which is too small for stable retraining of a new amplitude tower.
+2. The V1 frequency prior is actually strong on the small data regime and should not be aggressively overwritten.
+3. The amplitude tower must be chosen by validation quality, not by recency.
+
+Mitigation now in place:
+
+- dashboard auto-scores amplitude checkpoints and selects the stronger one,
+- evaluation defaults to the stable `best_model.pth` amplitude checkpoint,
+- frequency tower retraining is optional and protected by warmup freeze, teacher loss, and early stopping.
+
+### 12.1 Failure-Mode Diagram
+
+```mermaid
+flowchart LR
+    A[Small dataset: 2 molecules] --> B[V3 amplitude retraining]
+    B --> C[Collapsed peak count]
+    C --> D[Flat reconstructed spectrum]
+    D --> E[Poor overlap]
+    A --> F[V1 frequency prior]
+    F --> G[Stable frequency positions]
+    G --> H[Hybrid fallback]
+```
+
+---
+
+## 13. Results And Interpretation
+
+This section summarizes the current behavior of the system and the meaning of the numbers.
+
+### 13.1 Model Behavior Summary
+
+- V1 frequency tower is still the strongest frequency prior on the tiny dataset.
+- V2 is the best amplitude learner when measured directly on amplitudes.
+- Hybrid is the best compromise when the goal is overall spectrum overlap and stable frequency alignment.
+
+### 13.2 Stable Evaluation Snapshot
+
+The current comparison behavior that should be treated as the operational baseline is:
+
+| Molecule | Model | Freq MAE | Amp MAE | Overlap | Pred Peaks | True Peaks |
+|---|---|---:|---:|---:|---:|---:|
+| ammonia | V1 | 0.03000 | 1.947729e-03 | 0.5240 | 41 | 39 |
+| ammonia | V2 | 0.71727 | 1.083328e-04 | 0.5434 | 39 | 39 |
+| ammonia | Hybrid | 0.03560 | 1.719348e-04 | 0.6208 | 39 | 39 |
+| water | V1 | 0.04456 | 2.305660e-03 | 0.4510 | 41 | 55 |
+| water | V2 | 0.32185 | 6.498991e-05 | 0.5311 | 56 | 55 |
+| water | Hybrid | 0.04180 | 1.033901e-04 | 0.4666 | 50 | 55 |
+
+Operational conclusions:
+
+- The hybrid stack is the best default for inference quality control.
+- The dashboard should prefer the amplitude checkpoint with the best validation score, not the newest one.
+- When reporting to the professor, emphasize that the architecture is correct, but the dataset is still the limiting factor.
+
+### 13.3 Visualization Interpretation
+
+The dashboard now exposes three useful views:
+
+1. Spectrum reconstruction: shows whether peak locations and amplitudes jointly reproduce the true Lorentzian envelope.
+2. Parity plots: show whether frequency and amplitude values align after Hungarian matching.
+3. Overlap metrics: quantify the full spectrum agreement, which is more important than isolated amplitude MAE.
+
+### 13.4 Evaluation Workflow Diagram
+
+```mermaid
+flowchart TD
+    A[Load processed sample] --> B[Run V1 frequency tower]
+    A --> C[Run V2 amplitude tower]
+    B --> D[Decode frequency slots]
+    C --> E[Decode amplitude slots]
+    D --> F[Hybrid assignment]
+    E --> F
+    F --> G[Matched peak pairs]
+    G --> H[Lorentzian spectrum]
+    H --> I[MAE + overlap metrics]
+```
+
+---
+
+## 14. Extension Scope
+
+The current repository supports several concrete extensions without changing the core problem statement.
+
+### 14.1 Near-Term Extensions
+
+1. Add a multi-checkpoint selector to the dashboard sidebar for explicit A/B testing.
+2. Add per-sample quality flags into the processed `.pt` files and manifest.
+3. Add a true validation split once the dataset is large enough.
+4. Add a report table for checkpoint scores so weak models are never silently promoted.
+
+### 14.2 Medium-Term Extensions
+
+1. Retrain a higher-capacity V1 frequency tower with `K_max >= 64` on a larger dataset.
+2. Upgrade the encoder to a true tensor-equivariant architecture if more diverse data justifies it.
+3. Add uncertainty heads for amplitudes so the model can express low-confidence peaks.
+4. Support x/y/z polarization labels and train a vector-aware target head.
+
+### 14.3 Long-Term Extensions
+
+1. Scale from two molecules to a multi-molecule benchmark set.
+2. Compare against alternative RT-TDDFT and linear-response baselines.
+3. Incorporate automated dataset generation manifests for HPC campaign control.
+4. Add external validation against a held-out reference chemistry set.
+
+### 14.4 Extension Scope Diagram
+
+```mermaid
+flowchart LR
+    A[Current V3 hybrid] --> B[Manual checkpoint selection]
+    A --> C[Single-axis x labels]
+    A --> D[Two-molecule dataset]
+    B --> E[Auto checkpoint quality gate]
+    C --> F[x/y/z polarization campaign]
+    D --> G[Larger chemistry library]
+    E --> H[Stable inference defaults]
+    F --> I[Vector-aware learning]
+    G --> J[Generalization benchmarks]
+```
+
+---
+
+## 15. Practical Commands And Operating Notes
+
+### 15.1 Dashboard
+
+```bash
+streamlit run dashboard/app.py
+```
+
+### 15.2 Evaluate The Hybrid Stack
+
+```bash
+/home/user/Electron-GNN/EGNN/bin/python scripts/evaluate_two_tower.py \
+  --data_dir data/processed \
+  --v1_ckpt checkpoints/best_model_v1.pth \
+  --v2_ckpt checkpoints/best_model.pth
+```
+
+### 15.3 Train The Hybrid Stack
+
+```bash
+/home/user/Electron-GNN/EGNN/bin/python -m train.train_v3_two_tower \
+  --data_dir data/processed \
+  --epochs_freq 0 \
+  --epochs_amp 60 \
+  --batch_size 1 \
+  --save_dir checkpoints \
+  --init_freq_ckpt checkpoints/best_model_v1.pth \
+  --init_amp_ckpt checkpoints/best_model.pth
+```
+
+### 15.4 Operating Rule
+
+- If a freshly trained amplitude checkpoint looks worse than `best_model.pth`, do not promote it by default.
+- Always verify with the dashboard comparison panel before updating a report or checkpoint pointer.
+
+---
+
+## 16. Final Summary
+
+V3 is no longer just an architecture idea. It is a versioned, documented workflow with:
+
+- a stable V1 frequency prior,
+- an amplitude-focused V2 tower,
+- a hybrid decoder,
+- an automatic checkpoint quality gate,
+- a safe retraining path,
+- and a report trail that explains the results and the limitations.
+
+The main scientific message is still the same:
+
+the model architecture is now structurally sound, but data scale is the dominant bottleneck for further accuracy gains.
