@@ -197,6 +197,7 @@ If you need strict legacy behavior without overflow slots:
 
 ## Reports And Documentation
 
+- Master end-to-end report (raw data to inference, labels, equations): [docs/REPORT_MASTER_END_TO_END.md](docs/REPORT_MASTER_END_TO_END.md)
 - Current authoritative V3 report: [docs/REPORT_V3_TWO_TOWER_HYBRID.md](docs/REPORT_V3_TWO_TOWER_HYBRID.md)
 - Detailed V3 end-to-end pipeline report with equations: [docs/REPORT_V3_END_TO_END_PIPELINE_DETAILED.md](docs/REPORT_V3_END_TO_END_PIPELINE_DETAILED.md)
 - V2 architecture report: [docs/REPORT_V2_ARCHITECTURE_AND_SCALING.md](docs/REPORT_V2_ARCHITECTURE_AND_SCALING.md)
