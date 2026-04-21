@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="621pt" height="255.166125pt" viewBox="0 0 621 255.166125" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-04-22T05:11:48.654611</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.8, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 255.166125 
+L 621 255.166125 
+L 621 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 18.506571 167.952525 
+L 120.222 167.952525 
+Q 122.852571 167.952525 122.852571 164.777325 
+L 122.852571 105.506925 
+Q 122.852571 102.331725 120.222 102.331725 
+L 18.506571 102.331725 
+Q 15.876 102.331725 15.876 105.506925 
+L 15.876 164.777325 
+Q 15.876 167.952525 18.506571 167.952525 
+z
+" clip-path="url(#p12313ee23b)" style="fill: #e3f2fd; stroke: #1565c0; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 189.493714 101.802525 
+L 326.283429 101.802525 
+Q 328.914 101.802525 328.914 98.627325 
+L 328.914 39.356925 
+Q 328.914 36.181725 326.283429 36.181725 
+L 189.493714 36.181725 
+Q 186.863143 36.181725 186.863143 39.356925 
+L 186.863143 98.627325 
+Q 186.863143 101.802525 189.493714 101.802525 
+z
+" clip-path="url(#p12313ee23b)" style="fill: #fff8e1; stroke: #f57c00; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 189.493714 234.102525 
+L 326.283429 234.102525 
+Q 328.914 234.102525 328.914 230.927325 
+L 328.914 171.656925 
+Q 328.914 168.481725 326.283429 168.481725 
+L 189.493714 168.481725 
+Q 186.863143 168.481725 186.863143 171.656925 
+L 186.863143 230.927325 
+Q 186.863143 234.102525 189.493714 234.102525 
+z
+" clip-path="url(#p12313ee23b)" style="fill: #f3e5f5; stroke: #6a1b9a; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 373.633714 167.952525 
+L 501.654857 167.952525 
+Q 504.285429 167.952525 504.285429 164.777325 
+L 504.285429 105.506925 
+Q 504.285429 102.331725 501.654857 102.331725 
+L 373.633714 102.331725 
+Q 371.003143 102.331725 371.003143 105.506925 
+L 371.003143 164.777325 
+Q 371.003143 167.952525 373.633714 167.952525 
+z
+" clip-path="url(#p12313ee23b)" style="fill: #eceff1; stroke: #455a64; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 531.468 167.952525 
+L 606.877714 167.952525 
+Q 609.508286 167.952525 609.508286 164.777325 
+L 609.508286 105.506925 
+Q 609.508286 102.331725 606.877714 102.331725 
+L 531.468 102.331725 
+Q 528.837429 102.331725 528.837429 105.506925 
+L 528.837429 164.777325 
+Q 528.837429 167.952525 531.468 167.952525 
+z
+" clip-path="url(#p12313ee23b)" style="fill: #ffebee; stroke: #c62828; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 121.975714 135.142125 
+Q 154.857857 102.067125 186.478793 70.260729 
+" clip-path="url(#p12313ee23b)" style="fill: none; stroke: #222222; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 181.392608 71.972665 
+L 186.478793 70.260729 
+L 184.79663 75.356838 
+z
+" clip-path="url(#p12313ee23b)" style="fill: #222222; stroke: #222222; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 121.975714 135.142125 
+Q 154.857857 168.217125 186.478793 200.023521 
+" clip-path="url(#p12313ee23b)" style="fill: none; stroke: #222222; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 184.79663 194.927412 
+L 186.478793 200.023521 
+L 181.392608 198.311585 
+z
+" clip-path="url(#p12313ee23b)" style="fill: #222222; stroke: #222222; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 328.037143 68.992125 
+Q 349.958571 96.775125 370.771936 123.153776 
+" clip-path="url(#p12313ee23b)" style="fill: none; stroke: #222222; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 369.682821 117.89889 
+L 370.771936 123.153776 
+L 365.914559 120.872137 
+z
+" clip-path="url(#p12313ee23b)" style="fill: #222222; stroke: #222222; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 328.037143 201.292125 
+Q 349.958571 174.832125 370.738758 149.749647 
+" clip-path="url(#p12313ee23b)" style="fill: none; stroke: #222222; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 365.828346 151.914791 
+L 370.738758 149.749647 
+L 369.524626 154.977064 
+z
+" clip-path="url(#p12313ee23b)" style="fill: #222222; stroke: #222222; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 503.408571 135.142125 
+Q 516.561429 135.142125 527.925431 135.142125 
+" clip-path="url(#p12313ee23b)" style="fill: none; stroke: #222222; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 523.125431 132.742125 
+L 527.925431 135.142125 
+L 523.125431 137.542125 
+z
+" clip-path="url(#p12313ee23b)" style="fill: #222222; stroke: #222222; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="69.364286" y="134.959269" transform="rotate(-0 69.364286 134.959269)">Same PyG graph</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #444444" x="69.364286" y="143.850806" transform="rotate(-0 69.364286 143.850806)">x, edge_index, pos</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="257.888571" y="68.809269" transform="rotate(-0 257.888571 68.809269)">V1 frequency tower</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #444444" x="257.888571" y="77.825963" transform="rotate(-0 257.888571 77.825963)">SpectralEquivariantGNNV1</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="257.888571" y="201.152238" transform="rotate(-0 257.888571 201.152238)">V2 amplitude tower</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #444444" x="257.888571" y="210.125963" transform="rotate(-0 257.888571 210.125963)">SpectralEquivariantGNN</text>
+   </g>
+   <g id="text_7">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="437.644286" y="134.959269" transform="rotate(-0 437.644286 134.959269)">Hybrid combiner</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #444444" transform="translate(384.405067 138.811791)">freq prior + amp match</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #444444" transform="translate(382.070692 148.889822)">utils/hybrid_inference.py</text>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="569.172857" y="135.002237" transform="rotate(-0 569.172857 135.002237)">Peaks</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #444444" x="569.172857" y="143.975962" transform="rotate(-0 569.172857 143.975962)">omega, B</text>
+   </g>
+   <g id="text_11">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start" x="3.6" y="12.718125" transform="rotate(-0 3.6 12.718125)">V3 hybrid inference  (two full-graph forwards, deterministic merge)</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p12313ee23b">
+   <rect x="3.6" y="18.718125" width="613.8" height="232.848"/>
+  </clipPath>
+ </defs>
+</svg>

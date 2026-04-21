@@ -1,3 +1,5 @@
+# Install order: see README "Environment setup". For a smaller CPU-only PyTorch wheel,
+# install torch from https://download.pytorch.org/whl/cpu then requirements-after-pytorch.txt
 torch>=2.0.0
 torch_geometric>=2.3.0
 e3nn>=0.5.0

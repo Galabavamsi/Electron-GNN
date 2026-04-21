@@ -19,6 +19,33 @@ Current operational default:
 - Automatic fallback to the strongest amplitude checkpoint.
 - V4 is archived as a failed experiment and removed from the active dashboard workflow.
 
+## Environment setup (fresh clone)
+
+Use a **virtual environment** so scripts see `matplotlib`, `torch`, and the rest of `requirements.txt`. Do **not** run project scripts with the system interpreter (`/bin/python3`) unless you installed those packages system-wide.
+
+```bash
+cd /path/to/Electron-GNN   # your clone directory
+bash scripts/setup_venv.sh cpu    # recommended on laptops: smaller CPU-only PyTorch wheel
+# or:
+bash scripts/setup_venv.sh gpu    # default PyPI torch (large CUDA download if available)
+
+source .venv/bin/activate
+python scripts/make_paper_figures.py
+```
+
+Manual equivalent:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -U pip setuptools wheel
+pip install 'torch>=2.0.0' --index-url https://download.pytorch.org/whl/cpu   # optional CPU index
+pip install -r requirements-after-pytorch.txt
+# If you skipped the CPU line above, install torch first: pip install 'torch>=2.0.0'
+```
+
+After activation, `which python` should show `.venv/bin/python`.
+
 ## End-To-End Pipeline
 
 ```mermaid

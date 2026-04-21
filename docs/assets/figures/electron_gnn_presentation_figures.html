@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Electron-GNN — SVG figures for slides and papers</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --fg: #1a1a1a;
+      --muted: #5c5c5c;
+      --border: #d0d0d0;
+      --accent: #0d47a1;
+      --card: #ffffff;
+      --code-bg: #f0f4f8;
+      --shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+      font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    [data-theme="dark"] {
+      --bg: #12151a;
+      --fg: #eceff4;
+      --muted: #aeb4bf;
+      --border: #2f3540;
+      --accent: #88c0d0;
+      --card: #1c2128;
+      --code-bg: #0d1117;
+      --shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.45;
+    }
+
+    header {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 0.5rem;
+    }
+
+    header h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.55rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 70ch;
+    }
+
+    .toolbar {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 1.25rem 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .toolbar button {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--fg);
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+
+    .toolbar button:hover {
+      border-color: var(--accent);
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 1.25rem 3rem;
+    }
+
+    figure.fig-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      margin: 1.5rem 0;
+      padding: 1rem 1rem 0.75rem;
+    }
+
+    figure.fig-panel figcaption {
+      padding: 0.75rem 0.25rem 0.25rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      margin-top: 0.5rem;
+    }
+
+    figure.fig-panel figcaption strong {
+      color: var(--fg);
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.95rem;
+    }
+
+    figure.fig-panel svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 520px;
+    }
+
+    .howto {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-top: 2rem;
+    }
+
+    .howto h2 {
+      margin-top: 0;
+      font-size: 1.1rem;
+    }
+
+    .howto ul { margin: 0.35rem 0 0; padding-left: 1.2rem; }
+    .howto li { margin: 0.35rem 0; }
+    .howto code {
+      background: var(--code-bg);
+      padding: 0.12rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.86em;
+    }
+
+    a { color: var(--accent); }
+
+    @media print {
+      .toolbar, .no-print { display: none !important; }
+      body { background: #fff; color: #000; }
+      figure.fig-panel {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #999;
+      }
+      [data-theme="dark"] {
+        --bg: #fff;
+        --fg: #000;
+        --muted: #333;
+        --border: #999;
+        --card: #fff;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Electron-GNN — presentation figures (SVG + HTML + CSS)</h1>
+    <p>
+      Vector figures for slides and manuscripts. Open this file in a browser.
+      Use <strong>Print to PDF</strong> for a static handout, or copy SVG into Inkscape / Illustrator for journal layout.
+    </p>
+  </header>
+
+  <div class="toolbar no-print">
+    <span style="color:var(--muted);font-size:0.875rem;">Projector:</span>
+    <button type="button" id="btn-theme" aria-label="Toggle dark theme">Toggle dark / light</button>
+  </div>
+
+  <main>
+    <!-- Figure 1: Pipeline -->
+    <figure class="fig-panel" id="fig-pipeline">
+      <svg viewBox="0 0 820 120" xmlns="http://www.w3.org/2000/svg" aria-labelledby="f1-title">
+        <title id="f1-title">End-to-end pipeline</title>
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+          </marker>
+          <linearGradient id="g1" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stop-color="#e3f2fd" />
+            <stop offset="100%" stop-color="#bbdefb" />
+          </linearGradient>
+        </defs>
+        <style>
+          .box { rx: 8; ry: 8; stroke-width: 1.5; }
+          .t { font-size: 13px; font-family: Segoe UI, Arial, sans-serif; fill: #111; }
+          .s { font-size: 11px; fill: #444; }
+        </style>
+        <rect class="box" x="10" y="25" width="115" height="55" fill="url(#g1)" stroke="#1565c0" />
+        <text class="t" x="67" y="50" text-anchor="middle">Raw RT-TDDFT</text>
+        <text class="s" x="67" y="68" text-anchor="middle">ReSpect</text>
+
+        <line x1="125" y1="52" x2="148" y2="52" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+
+        <rect class="box" x="150" y="25" width="115" height="55" fill="#e8f5e9" stroke="#2e7d32" />
+        <text class="t" x="207" y="50" text-anchor="middle">Parse + peaks</text>
+        <text class="s" x="207" y="68" text-anchor="middle">Padé + LASSO</text>
+
+        <line x1="265" y1="52" x2="288" y2="52" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+
+        <rect class="box" x="290" y="25" width="100" height="55" fill="#fff3e0" stroke="#ef6c00" />
+        <text class="t" x="340" y="50" text-anchor="middle">Graph +</text>
+        <text class="s" x="340" y="68" text-anchor="middle">targets .pt</text>
+
+        <line x1="390" y1="52" x2="413" y2="52" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+
+        <rect class="box" x="415" y="25" width="115" height="55" fill="#f3e5f5" stroke="#6a1b9a" />
+        <text class="t" x="472" y="48" text-anchor="middle">GNN one-shot</text>
+        <text class="s" x="472" y="66" text-anchor="middle">V2 or hybrid</text>
+
+        <line x1="530" y1="52" x2="553" y2="52" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+
+        <rect class="box" x="555" y="25" width="100" height="55" fill="#fce4ec" stroke="#c62828" />
+        <text class="t" x="605" y="50" text-anchor="middle">Decode</text>
+        <text class="s" x="605" y="68" text-anchor="middle">slots to peaks</text>
+
+        <line x1="655" y1="52" x2="678" y2="52" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+
+        <rect class="box" x="680" y="25" width="125" height="55" fill="#eceff1" stroke="#455a64" />
+        <text class="t" x="742" y="50" text-anchor="middle">Spectrum + metrics</text>
+        <text class="s" x="742" y="68" text-anchor="middle">Lorentzian sum</text>
+      </svg>
+      <figcaption>
+        <strong>Figure 1.</strong> Offline physics extraction trains a geometry-to-peak model; inference is one forward pass per molecule (plus lightweight decode).
+      </figcaption>
+    </figure>
+
+    <!-- Figure 2: V2 stack -->
+    <figure class="fig-panel" id="fig-v2-stack">
+      <svg viewBox="0 0 520 560" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+          </marker>
+        </defs>
+        <style>
+          .blk { rx: 10; ry: 10; stroke-width: 2; }
+          .lbl { font-size: 14px; font-family: Segoe UI, Arial, sans-serif; font-weight: 600; fill: #111; }
+          .sub { font-size: 11px; fill: #333; font-family: Segoe UI, Arial, sans-serif; }
+        </style>
+        <text x="260" y="22" text-anchor="middle" class="lbl" font-size="16px">SpectralEquivariantGNN (V2) — one forward</text>
+
+        <rect class="blk" x="40" y="38" width="440" height="48" fill="#e3f2fd" stroke="#1565c0" />
+        <text x="260" y="60" text-anchor="middle" class="lbl">Inputs: x, edge_index, edge_attr, batch</text>
+        <text x="260" y="76" text-anchor="middle" class="sub">N×5 one-hot nodes · E directed edges within cutoff · edge_attr is distance + relative vector</text>
+
+        <line x1="260" y1="86" x2="260" y2="102" stroke="#333" stroke-width="2" marker-end="url(#arrow2)" />
+
+        <rect class="blk" x="40" y="104" width="440" height="42" fill="#e8f5e9" stroke="#2e7d32" />
+        <text x="260" y="128" text-anchor="middle" class="lbl">Embeddings: node_emb, edge_emb → dim H=128</text>
+
+        <line x1="260" y1="146" x2="260" y2="162" stroke="#333" stroke-width="2" marker-end="url(#arrow2)" />
+
+        <rect class="blk" x="40" y="164" width="440" height="120" fill="#fff8e1" stroke="#f57c00" />
+        <text x="260" y="188" text-anchor="middle" class="lbl">GATv2 message passing × 4</text>
+        <text x="260" y="208" text-anchor="middle" class="sub">Each block: GATv2Conv (4 heads) → LayerNorm → GELU → residual</text>
+        <text x="260" y="228" text-anchor="middle" class="sub">Same edge_index and edge features reused every layer</text>
+        <text x="260" y="252" text-anchor="middle" class="sub">Output per atom: h ∈ R^H</text>
+
+        <line x1="260" y1="284" x2="260" y2="300" stroke="#333" stroke-width="2" marker-end="url(#arrow2)" />
+
+        <rect class="blk" x="40" y="302" width="440" height="52" fill="#eceff1" stroke="#455a64" />
+        <text x="260" y="326" text-anchor="middle" class="lbl">to_dense_batch → memory tokens (B × Nmax × H)</text>
+        <text x="260" y="344" text-anchor="middle" class="sub">Padding mask for Transformer</text>
+
+        <line x1="260" y1="354" x2="260" y2="370" stroke="#333" stroke-width="2" marker-end="url(#arrow2)" />
+
+        <rect class="blk" x="40" y="372" width="440" height="68" fill="#f3e5f5" stroke="#6a1b9a" />
+        <text x="260" y="396" text-anchor="middle" class="lbl">TransformerDecoder × 2 (DETR-style)</text>
+        <text x="260" y="416" text-anchor="middle" class="sub">K_max=64 learnable queries attend to all atom tokens</text>
+        <text x="260" y="432" text-anchor="middle" class="sub">slot_features ∈ R^{B×K×H} then concat global context + MLP refine</text>
+
+        <line x1="260" y1="440" x2="260" y2="456" stroke="#333" stroke-width="2" marker-end="url(#arrow2)" />
+
+        <rect class="blk" x="40" y="458" width="440" height="72" fill="#ffebee" stroke="#c62828" />
+        <text x="260" y="482" text-anchor="middle" class="lbl">Heads</text>
+        <text x="260" y="500" text-anchor="middle" class="sub">count (graph-level) · prob · freq · amp per slot</text>
+        <text x="260" y="518" text-anchor="middle" class="sub">Non-negativity: softplus on freq/amp/count path</text>
+      </svg>
+      <figcaption>
+        <strong>Figure 2.</strong> V2 amplitude tower: graph encoder + set decoder + slot heads. Matches <code>models/mace_net.py</code> defaults (H=128, K_max=64, 4 heads).
+      </figcaption>
+    </figure>
+
+    <!-- Figure 3: Graph schematic -->
+    <figure class="fig-panel" id="fig-graph">
+      <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr3" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#555" />
+          </marker>
+        </defs>
+        <text x="320" y="22" text-anchor="middle" font-size="15px" font-weight="650" font-family="Segoe UI, Arial, sans-serif">Cutoff graph (directed, r_c = 5 a.u.)</text>
+        <text x="320" y="42" text-anchor="middle" font-size="11px" fill="#444" font-family="Segoe UI, Arial, sans-serif">Every ordered pair i≠j within distance gets an edge i→j with edge_attr [d, r_i−r_j]</text>
+
+        <!-- nodes -->
+        <circle cx="120" cy="140" r="22" fill="#e3f2fd" stroke="#1565c0" stroke-width="2" />
+        <text x="120" y="145" text-anchor="middle" font-size="12px" font-weight="700">H</text>
+        <circle cx="260" cy="90" r="22" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2" />
+        <text x="260" y="95" text-anchor="middle" font-size="12px" font-weight="700">N</text>
+        <circle cx="400" cy="140" r="22" fill="#fff3e0" stroke="#ef6c00" stroke-width="2" />
+        <text x="400" y="145" text-anchor="middle" font-size="12px" font-weight="700">H</text>
+        <circle cx="260" cy="200" r="22" fill="#fce4ec" stroke="#c2185b" stroke-width="2" />
+        <text x="260" y="205" text-anchor="middle" font-size="12px" font-weight="700">H</text>
+
+        <!-- edges (directed) -->
+        <line x1="138" y1="128" x2="238" y2="100" stroke="#555" stroke-width="1.5" marker-end="url(#arr3)" />
+        <line x1="282" y1="100" x2="378" y2="128" stroke="#555" stroke-width="1.5" marker-end="url(#arr3)" />
+        <line x1="138" y1="152" x2="238" y2="188" stroke="#555" stroke-width="1.5" marker-end="url(#arr3)" />
+        <line x1="282" y1="188" x2="378" y2="152" stroke="#555" stroke-width="1.5" marker-end="url(#arr3)" />
+        <line x1="260" y1="112" x2="260" y2="178" stroke="#999" stroke-width="1.2" marker-end="url(#arr3)" />
+
+        <rect x="470" y="70" width="155" height="150" rx="8" fill="#fafafa" stroke="#bbb" />
+        <text x="547" y="95" text-anchor="middle" font-size="12px" font-weight="650">Node feat</text>
+        <text x="547" y="115" text-anchor="middle" font-size="11px" fill="#333">one-hot ∈ R^5</text>
+        <text x="547" y="140" text-anchor="middle" font-size="12px" font-weight="650">Edge feat</text>
+        <text x="547" y="158" text-anchor="middle" font-size="11px" fill="#333">d and Δr ∈ R^4</text>
+        <text x="547" y="185" text-anchor="middle" font-size="12px" font-weight="650">Message pass</text>
+        <text x="547" y="203" text-anchor="middle" font-size="11px" fill="#333">GATv2 + edge</text>
+      </svg>
+      <figcaption>
+        <strong>Figure 3.</strong> Schematic molecular graph (not a specific molecule). Implementation: <code>models/molecule_graph.py</code>.
+      </figcaption>
+    </figure>
+
+    <!-- Figure 4: Hybrid -->
+    <figure class="fig-panel" id="fig-hybrid">
+      <svg viewBox="0 0 720 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr4" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+          </marker>
+        </defs>
+        <style>
+          .b { rx: 10; ry: 10; stroke-width: 2; }
+          .t { font-family: Segoe UI, Arial, sans-serif; font-size: 13px; font-weight: 650; fill: #111; }
+          .u { font-family: Segoe UI, Arial, sans-serif; font-size: 11px; fill: #444; }
+        </style>
+
+        <rect class="b" x="20" y="60" width="130" height="80" fill="#e3f2fd" stroke="#1565c0" />
+        <text x="85" y="88" text-anchor="middle" class="t">Same PyG graph</text>
+        <text x="85" y="108" text-anchor="middle" class="u">x, edges, pos</text>
+
+        <line x1="150" y1="100" x2="170" y2="100" stroke="#333" stroke-width="2" />
+        <line x1="170" y1="100" x2="175" y2="55" stroke="#333" stroke-width="1.5" />
+        <line x1="175" y1="55" x2="218" y2="55" stroke="#333" stroke-width="1.5" marker-end="url(#arr4)" />
+
+        <line x1="150" y1="100" x2="175" y2="145" stroke="#333" stroke-width="1.5" />
+        <line x1="175" y1="145" x2="218" y2="145" stroke="#333" stroke-width="1.5" marker-end="url(#arr4)" />
+
+        <rect class="b" x="220" y="25" width="150" height="60" fill="#fff8e1" stroke="#f57c00" />
+        <text x="295" y="48" text-anchor="middle" class="t">V1 frequency tower</text>
+        <text x="295" y="64" text-anchor="middle" class="u">SpectralEquivariantGNNV1</text>
+
+        <rect class="b" x="220" y="115" width="150" height="60" fill="#f3e5f5" stroke="#6a1b9a" />
+        <text x="295" y="138" text-anchor="middle" class="t">V2 amplitude tower</text>
+        <text x="295" y="154" text-anchor="middle" class="u">SpectralEquivariantGNN</text>
+
+        <line x1="370" y1="55" x2="418" y2="90" stroke="#333" stroke-width="1.5" marker-end="url(#arr4)" />
+        <line x1="370" y1="145" x2="418" y2="110" stroke="#333" stroke-width="1.5" marker-end="url(#arr4)" />
+
+        <rect class="b" x="420" y="55" width="160" height="90" fill="#eceff1" stroke="#455a64" />
+        <text x="500" y="82" text-anchor="middle" class="t">Hybrid combiner</text>
+        <text x="500" y="100" text-anchor="middle" class="u">freq prior + amp match</text>
+        <text x="500" y="118" text-anchor="middle" class="u">utils/hybrid_inference.py</text>
+
+        <line x1="580" y1="100" x2="618" y2="100" stroke="#333" stroke-width="2" marker-end="url(#arr4)" />
+
+        <rect class="b" x="620" y="65" width="85" height="70" fill="#ffebee" stroke="#c62828" />
+        <text x="662" y="92" text-anchor="middle" class="t">Peaks</text>
+        <text x="662" y="112" text-anchor="middle" class="u">ω, B</text>
+      </svg>
+      <figcaption>
+        <strong>Figure 4.</strong> V3 hybrid: two full-graph forwards (not sliding windows), then deterministic merge for presentation metrics and dashboard.
+      </figcaption>
+    </figure>
+
+    <section class="howto no-print">
+      <h2>Export and publication workflow (from web + tooling research)</h2>
+      <ul>
+        <li><strong>SVG strengths:</strong> infinite zoom, editable text, journal-friendly when embedded in PDF or supplied as separate vector (see e.g. svgutils for composing panels in Python).</li>
+        <li><strong>This file:</strong> Use browser <strong>Print → Save as PDF</strong> for a quick handout. For LaTeX, export individual panels: open DevTools, select an <code>svg</code> element, copy outerHTML, save as <code>.svg</code>, then <code>\\includesvg</code> (svg package) or convert to PDF in Inkscape.</li>
+        <li><strong>Mermaid → SVG:</strong> Keep Mermaid sources in <code>docs/ONE_SHOT_PREDICTION_QA_DIAGRAMS.md</code>; paste into <a href="https://mermaid.live" rel="noopener">mermaid.live</a> and export SVG/PNG for slides.</li>
+        <li><strong>Plots (spectra, loss):</strong> Prefer <strong>matplotlib SVG</strong> output (<code>plt.savefig("fig.svg")</code>) for data curves; compose with Inkscape or svgutils.</li>
+        <li><strong>MCP note:</strong> There is no universal “diagram MCP” in this repo. Optional Cursor MCPs (e.g. design tools) are account-specific; for reproducible papers, <strong>version-controlled SVG/HTML</strong> plus scripted matplotlib remains the most portable path.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var btn = document.getElementById("btn-theme");
+      function apply(t) {
+        if (t === "dark") root.setAttribute("data-theme", "dark");
+        else root.removeAttribute("data-theme");
+        try { localStorage.setItem("egnn-fig-theme", t); } catch (e) {}
+      }
+      try {
+        var saved = localStorage.getItem("egnn-fig-theme");
+        if (saved === "dark") apply("dark");
+      } catch (e) {}
+      btn.addEventListener("click", function () {
+        apply(root.getAttribute("data-theme") === "dark" ? "light" : "dark");
+      });
+    })();
+  </script>
+</body>
+</html>
