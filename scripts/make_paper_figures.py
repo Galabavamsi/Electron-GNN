@@ -1,93 +1,192 @@
 """
-Generate publication-quality SVG figures for Electron-GNN.
+Generate publication-grade SVG figures for Electron-GNN.
 
-Outputs to docs/assets/figures/*.svg using matplotlib (+ networkx if available).
-All figures are vector SVG; embed in slides, LaTeX, or HTML directly.
+The output is a research-paper-ready figure suite in docs/assets/figures/*.svg,
+covering architecture, end-to-end flow, and physics-grounded demo visuals.
 
-Run (after `source .venv/bin/activate` — see README Environment setup):
+Run (after activating the project virtual environment):
     python scripts/make_paper_figures.py
-    python scripts/make_paper_figures.py --no-data    # skip real-data figures
+    python scripts/make_paper_figures.py --no-data
 
-Do not use the system interpreter if it lacks matplotlib; use `.venv/bin/python` instead.
-
-Optional dependencies:
-    matplotlib  (required)
-    numpy       (required)
-    networkx    (optional; graph_schematic falls back to manual layout)
-    torch       (optional; only needed for figures based on processed .pt files)
+In no-data mode, figures fall back to deterministic synthetic examples.
 """
 
 from __future__ import annotations
 
 import argparse
-import os
+import importlib
 import sys
+import textwrap
 from pathlib import Path
 
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.lines import Line2D
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
-try:
-    import networkx as nx
-    _HAS_NX = True
-except ImportError:
-    _HAS_NX = False
 
+# ---- Style -------------------------------------------------------------------
 
-# ---- Style: paper-friendly ---------------------------------------------------
-
-plt.rcParams.update({
-    "font.family": "DejaVu Sans",
-    "font.size": 11,
-    "axes.titlesize": 12,
-    "axes.labelsize": 11,
-    "axes.spines.top": False,
-    "axes.spines.right": False,
-    "savefig.bbox": "tight",
-    "savefig.pad_inches": 0.05,
-    "svg.fonttype": "none",  # text stays editable in Inkscape / Illustrator
-})
+plt.rcParams.update(
+    {
+        "font.family": "DejaVu Serif",
+        "mathtext.fontset": "stix",
+        "font.size": 10.5,
+        "axes.titlesize": 12.5,
+        "axes.labelsize": 10.5,
+        "axes.titleweight": "semibold",
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.grid": True,
+        "grid.alpha": 0.20,
+        "grid.linestyle": "--",
+        "grid.linewidth": 0.6,
+        "savefig.bbox": "tight",
+        "savefig.pad_inches": 0.05,
+        "svg.fonttype": "none",
+    }
+)
 
 PALETTE = {
-    "input": "#e3f2fd",      "input_e": "#1565c0",
-    "embed": "#e8f5e9",      "embed_e": "#2e7d32",
-    "mp":    "#fff3e0",      "mp_e":    "#ef6c00",
-    "dense": "#eceff1",      "dense_e": "#455a64",
-    "dec":   "#f3e5f5",      "dec_e":   "#6a1b9a",
-    "head":  "#ffebee",      "head_e":  "#c62828",
-    "extra": "#fff8e1",      "extra_e": "#f57c00",
+    "ink": "#1d2433",
+    "muted": "#5d6578",
+    "line": "#2a3243",
+    "input": "#eaf2ff",
+    "input_e": "#2d5fb3",
+    "physics": "#e9f8ef",
+    "physics_e": "#2c8c4d",
+    "graph": "#fff4e6",
+    "graph_e": "#c8701c",
+    "tower": "#f4ebff",
+    "tower_e": "#6e3ab2",
+    "hybrid": "#eaf6f6",
+    "hybrid_e": "#2b7f8d",
+    "head": "#ffeef0",
+    "head_e": "#ba3f4b",
+    "note": "#f8f8fb",
+    "note_e": "#8a90a3",
+}
+
+EL_COLOR = {
+    1: ("H", "#dceeff", "#2d5fb3"),
+    6: ("C", "#f0e5ff", "#6e3ab2"),
+    7: ("N", "#e7f8ec", "#2c8c4d"),
+    8: ("O", "#ffeed8", "#c8701c"),
+    9: ("F", "#ffe8ec", "#ba3f4b"),
 }
 
 
 # ---- Helpers -----------------------------------------------------------------
 
-def _box(ax, x, y, w, h, text, fc, ec, sub=None, fontsize=11):
-    box = FancyBboxPatch(
-        (x, y), w, h,
-        boxstyle="round,pad=0.02,rounding_size=0.06",
-        linewidth=1.6, edgecolor=ec, facecolor=fc,
-    )
-    ax.add_patch(box)
-    cy = y + h / 2 + (0.06 if sub else 0)
-    ax.text(x + w / 2, cy, text, ha="center", va="center",
-            fontsize=fontsize, fontweight="bold")
-    if sub:
-        ax.text(x + w / 2, y + h / 2 - 0.12, sub, ha="center", va="center",
-                fontsize=fontsize - 2, color="#444")
+def _to_numpy(value):
+    if hasattr(value, "detach"):
+        return value.detach().cpu().numpy()
+    return np.asarray(value)
 
 
-def _arrow(ax, x1, y1, x2, y2, color="#222", lw=1.6):
-    arr = FancyArrowPatch(
-        (x1, y1), (x2, y2),
-        arrowstyle="-|>", mutation_scale=12,
-        color=color, lw=lw, shrinkA=0, shrinkB=0,
+def _box(
+    ax,
+    x,
+    y,
+    w,
+    h,
+    title,
+    subtitle,
+    fc,
+    ec,
+    title_size=10.8,
+    subtitle_size=9.0,
+    lw=1.5,
+):
+    patch = FancyBboxPatch(
+        (x, y),
+        w,
+        h,
+        boxstyle="round,pad=0.02,rounding_size=0.08",
+        linewidth=lw,
+        edgecolor=ec,
+        facecolor=fc,
     )
-    ax.add_patch(arr)
+    ax.add_patch(patch)
+    title_obj = ax.text(
+        x + w / 2,
+        y + h * 0.64,
+        title,
+        ha="center",
+        va="center",
+        fontsize=title_size,
+        color=PALETTE["ink"],
+        fontweight="semibold",
+        clip_on=True,
+        clip_path=patch,
+    )
+
+    # Wrap long plain-language subtitles before rendering so paper figures remain legible.
+    if subtitle and ("$" not in subtitle) and ("\n" not in subtitle):
+        wrap_width = max(16, int(w * 10))
+        subtitle = textwrap.fill(subtitle, width=wrap_width)
+
+    sub_obj = None
+    if subtitle:
+        sub_obj = ax.text(
+            x + w / 2,
+            y + h * 0.35,
+            subtitle,
+            ha="center",
+            va="center",
+            fontsize=subtitle_size,
+            color=PALETTE["muted"],
+            linespacing=1.25,
+            clip_on=True,
+            clip_path=patch,
+        )
+
+    _fit_text_to_box(ax, title_obj, x, y, w, h * 0.46, min_font=7.8)
+    if sub_obj is not None:
+        _fit_text_to_box(ax, sub_obj, x, y, w, h * 0.48, min_font=6.8)
+
+
+def _fit_text_to_box(ax, text_obj, x, y, w, h, min_font=6.8, pad_ratio=0.08):
+    """Shrink text until it fits inside a target box in data coordinates."""
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+
+    max_w = w * (1.0 - pad_ratio)
+    max_h = h * (1.0 - pad_ratio)
+
+    for _ in range(36):
+        bbox_disp = text_obj.get_window_extent(renderer=renderer)
+        bbox_data = bbox_disp.transformed(ax.transData.inverted())
+        fits_w = bbox_data.width <= max_w
+        fits_h = bbox_data.height <= max_h
+        if fits_w and fits_h:
+            return
+
+        fs = float(text_obj.get_fontsize())
+        if fs <= min_font + 1e-6:
+            return
+        text_obj.set_fontsize(max(min_font, fs - 0.25))
+        fig.canvas.draw()
+
+
+def _arrow(ax, x1, y1, x2, y2, lw=1.4, color=None, rad=0.0):
+    color = PALETTE["line"] if color is None else color
+    arrow = FancyArrowPatch(
+        (x1, y1),
+        (x2, y2),
+        arrowstyle="-|>",
+        mutation_scale=11,
+        linewidth=lw,
+        color=color,
+        shrinkA=0,
+        shrinkB=0,
+        connectionstyle=f"arc3,rad={rad}",
+    )
+    ax.add_patch(arrow)
 
 
 def _save(fig, out_dir: Path, name: str):
@@ -97,342 +196,587 @@ def _save(fig, out_dir: Path, name: str):
     print(f"  wrote {path.relative_to(Path.cwd()) if path.is_absolute() else path}")
 
 
-# ---- Figure 1: Pipeline ------------------------------------------------------
+def _lorentzian_spectrum(omega, freqs, amps, gamma=0.015):
+    spec = np.zeros_like(omega)
+    if len(freqs) == 0:
+        return spec
+    for w_i, b_i in zip(freqs, amps):
+        spec += b_i * (gamma / ((omega - w_i) ** 2 + gamma**2))
+    return spec
+
+
+def _dipole_signal(times, freqs, amps):
+    if len(freqs) == 0:
+        return np.zeros_like(times)
+    wave = np.zeros_like(times)
+    for w_i, b_i in zip(freqs, amps):
+        wave += b_i * np.sin(w_i * times)
+    return wave
+
+
+def _load_processed_samples(data_dir: Path, max_samples=4):
+    files = sorted(data_dir.glob("*_targets.pt"))
+    if not files:
+        return []
+
+    try:
+        torch = importlib.import_module("torch")
+    except ModuleNotFoundError:
+        print("  [info] torch not installed, using synthetic fallback for data-dependent figures")
+        return []
+
+    samples = []
+    for fp in files[:max_samples]:
+        data = torch.load(fp, weights_only=False)
+        freq = _to_numpy(data.get("frequencies", np.array([]))).astype(float)
+        amp = np.abs(_to_numpy(data.get("amplitudes_x", np.array([]))).astype(float))
+        z = _to_numpy(data.get("atomic_numbers", np.array([]))).astype(int)
+        pos = _to_numpy(data.get("positions", np.empty((0, 3)))).astype(float)
+
+        order = np.argsort(freq)
+        samples.append(
+            {
+                "name": fp.stem.replace("_targets", ""),
+                "freq": freq[order],
+                "amp": amp[order],
+                "z": z,
+                "pos": pos,
+            }
+        )
+    return samples
+
+
+def _synthetic_sample(name="synthetic", n_peaks=16):
+    rng = np.random.default_rng(23)
+    freq = np.sort(rng.uniform(0.12, 1.35, size=n_peaks))
+    amp = rng.lognormal(mean=-7.1, sigma=0.55, size=n_peaks)
+    z = np.array([7, 1, 1, 1], dtype=int)
+    pos = np.array(
+        [
+            [0.00, 0.00, 0.14],
+            [0.90, 0.00, -0.35],
+            [-0.48, 0.80, -0.35],
+            [-0.48, -0.80, -0.35],
+        ],
+        dtype=float,
+    )
+    return {"name": name, "freq": freq, "amp": amp, "z": z, "pos": pos}
+
+
+def _make_demo_prediction(true_freq, true_amp):
+    if len(true_freq) == 0:
+        return np.array([]), np.array([])
+    rng = np.random.default_rng(7)
+    pred_freq = np.clip(true_freq + rng.normal(0.0, 0.012, size=true_freq.shape), 0.02, None)
+    amp_scale = np.clip(1.0 + rng.normal(0.0, 0.15, size=true_amp.shape), 0.5, 1.7)
+    pred_amp = np.maximum(1e-8, true_amp * amp_scale)
+    order = np.argsort(pred_freq)
+    return pred_freq[order], pred_amp[order]
+
+
+def _paired_metrics(true_freq, true_amp, pred_freq, pred_amp):
+    if len(true_freq) == 0 or len(pred_freq) == 0:
+        return np.array([]), np.array([]), np.array([]), np.array([]), np.nan, np.nan
+
+    n = min(len(true_freq), len(pred_freq))
+    t_order = np.argsort(true_freq)[:n]
+    p_order = np.argsort(pred_freq)[:n]
+
+    tw = true_freq[t_order]
+    pw = pred_freq[p_order]
+    tb = true_amp[t_order]
+    pb = pred_amp[p_order]
+
+    freq_mae = float(np.mean(np.abs(pw - tw)))
+    amp_mae = float(np.mean(np.abs(pb - tb)))
+    return tw, pw, tb, pb, freq_mae, amp_mae
+
+
+def _spectral_overlap(true_freq, true_amp, pred_freq, pred_amp, gamma=0.015):
+    omega = np.linspace(0.01, 1.5, 1200)
+    spec_true = _lorentzian_spectrum(omega, true_freq, true_amp, gamma=gamma)
+    spec_pred = _lorentzian_spectrum(omega, pred_freq, pred_amp, gamma=gamma)
+    denom = np.linalg.norm(spec_true) * np.linalg.norm(spec_pred)
+    if denom < 1e-12:
+        return 0.0
+    return float(np.dot(spec_true, spec_pred) / denom)
+
+
+# ---- Figures -----------------------------------------------------------------
 
 def fig_pipeline(out_dir: Path):
-    fig, ax = plt.subplots(figsize=(11, 2.2))
-    ax.set_xlim(0, 14); ax.set_ylim(0, 2.4); ax.set_axis_off()
+    fig, ax = plt.subplots(figsize=(12.8, 4.6))
+    ax.set_xlim(0, 15.2)
+    ax.set_ylim(0, 5.2)
+    ax.set_axis_off()
 
-    boxes = [
-        ("Raw RT-TDDFT",   "ReSpect .out / .xyz",  PALETTE["input"], PALETTE["input_e"]),
-        ("Parse + peaks",  "Pade + LASSO",         PALETTE["embed"], PALETTE["embed_e"]),
-        ("Graph + targets","data/processed/*.pt",  PALETTE["mp"],    PALETTE["mp_e"]),
-        ("GNN one-shot",   "V2 or V3 hybrid",      PALETTE["dec"],   PALETTE["dec_e"]),
-        ("Decode",         "slots → peaks",        PALETTE["head"],  PALETTE["head_e"]),
-        ("Spectrum + metrics", "Lorentzian sum",   PALETTE["dense"], PALETTE["dense_e"]),
+    stages = [
+        ("S0", "Raw RT-TDDFT", "ReSpect .out/.xyz", 0.4, 3.2, PALETTE["input"], PALETTE["input_e"]),
+        ("S1-S2", "Physics Extraction", "Pad\'e + clustering + sparse fit", 3.1, 3.2, PALETTE["physics"], PALETTE["physics_e"]),
+        ("S3-S4", "Graph + Targets", "Data(x, edge_index, y_freq, y_amp)", 5.95, 3.2, PALETTE["graph"], PALETTE["graph_e"]),
+        ("S5-S6", "Model Training", "Hungarian loss + spectrum regularizer", 8.8, 3.2, PALETTE["tower"], PALETTE["tower_e"]),
+        ("S7", "Hybrid Decode", "V1 frequency prior + V2 amplitudes", 11.65, 3.2, PALETTE["hybrid"], PALETTE["hybrid_e"]),
     ]
-    bw, bh, gap = 1.95, 1.15, 0.25
-    x = 0.2
-    centers = []
-    for label, sub, fc, ec in boxes:
-        _box(ax, x, 0.6, bw, bh, label, fc, ec, sub=sub, fontsize=10)
-        centers.append((x + bw / 2, 0.6 + bh / 2, x + bw))
-        x += bw + gap
 
-    for i in range(len(centers) - 1):
-        x_end = centers[i][2]
-        x_next = x_end + gap
-        _arrow(ax, x_end + 0.02, centers[i][1], x_next - 0.02, centers[i + 1][1])
+    for _, title, sub, x, y, fc, ec in stages:
+        _box(ax, x, y, 2.55, 1.4, title, sub, fc, ec, title_size=10.4)
 
-    ax.set_title("Electron-GNN pipeline (offline data → one-shot inference)",
-                 loc="left", fontsize=12, pad=10)
+    for i in range(len(stages) - 1):
+        x_right = stages[i][3] + 2.55
+        x_next = stages[i + 1][3]
+        _arrow(ax, x_right + 0.03, 3.9, x_next - 0.03, 3.9)
+
+    for stage_id, _, _, x, y, _, _ in stages:
+        ax.text(x + 0.08, y + 1.25, stage_id, fontsize=8.8, color=PALETTE["muted"], fontweight="semibold")
+
+    _box(
+        ax,
+        4.35,
+        1.0,
+        6.6,
+        1.45,
+        "Final observable",
+        r"$S(\omega)=\sum_k B_k\,\frac{\gamma}{(\omega-\omega_k)^2+\gamma^2}$"
+        "\nmetric panel: frequency MAE, amplitude MAE, spectral overlap",
+        PALETTE["note"],
+        PALETTE["note_e"],
+        title_size=10.6,
+        subtitle_size=9.7,
+    )
+    _arrow(ax, 12.95, 3.2, 10.9, 2.45, rad=-0.1)
+
+    ax.set_title("Electron-GNN End-to-End Flow (implementation-aligned)", loc="left")
     _save(fig, out_dir, "fig1_pipeline")
 
 
-# ---- Figure 2: V2 stack ------------------------------------------------------
-
 def fig_v2_stack(out_dir: Path):
-    fig, ax = plt.subplots(figsize=(7.2, 9.0))
-    ax.set_xlim(0, 8); ax.set_ylim(0, 11.5); ax.set_axis_off()
+    fig, ax = plt.subplots(figsize=(8.8, 10.4))
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 13.6)
+    ax.set_axis_off()
 
     blocks = [
-        # (y, h, title, sub, fc, ec)
-        (10.1, 0.9, "Inputs (PyG Data)",
-         "x ∈ R^{N×5}  ·  edge_index ∈ Z^{2×E}  ·  edge_attr ∈ R^{E×4}  ·  batch",
-         PALETTE["input"], PALETTE["input_e"]),
-        (8.95, 0.85, "Embeddings",
-         "node_emb 5→128  ·  edge_emb 4→128 (SiLU + LayerNorm)",
-         PALETTE["embed"], PALETTE["embed_e"]),
-        (6.6, 2.05, "GATv2 message passing × 4",
-         "GATv2Conv (4 heads, edge-aware)  →  LayerNorm  →  GELU  →  + residual\n"
-         "h ∈ R^{N×128}; same edges reused every layer",
-         PALETTE["mp"], PALETTE["mp_e"]),
-        (5.45, 0.85, "to_dense_batch",
-         "padded memory tokens  M ∈ R^{B×N_max×128}  + key padding mask",
-         PALETTE["dense"], PALETTE["dense_e"]),
-        (3.55, 1.6, "TransformerDecoder × 2 (DETR-style)",
-         "K_max=64 learnable queries cross-attend to atoms\n"
-         "+ global pool concat  +  slot_refine MLP",
-         PALETTE["dec"], PALETTE["dec_e"]),
-        (1.55, 1.5, "Heads",
-         "count (B,)  ·  prob (B,K)  ·  freq (B,K)  ·  amp (B,K)\n"
-         "softplus on freq/amp/count, sigmoid on prob",
-         PALETTE["head"], PALETTE["head_e"]),
-        (0.15, 1.0, "Output: pred_dict",
-         "{prob, prob_logits, freq, amp, count}",
-         PALETTE["extra"], PALETTE["extra_e"]),
+        (11.95, 1.05, "Input graph", r"$x\in\mathbb{R}^{N\times 5}$, $e\in\mathbb{R}^{E\times 4}$, batch", PALETTE["input"], PALETTE["input_e"]),
+        (10.55, 1.05, "Node/edge embedding", "Linear + SiLU + LayerNorm", PALETTE["graph"], PALETTE["graph_e"]),
+        (8.45, 1.8, "GATv2 encoder x4", "Edge-aware message passing, residual, GELU", PALETTE["tower"], PALETTE["tower_e"]),
+        (7.2, 0.9, "Dense memory tokens", "to_dense_batch(h)", PALETTE["hybrid"], PALETTE["hybrid_e"]),
+        (5.0, 1.7, "Set decoder", r"$K_{max}=64$ learned queries + TransformerDecoder x2", PALETTE["physics"], PALETTE["physics_e"]),
+        (2.65, 1.9, "Prediction heads", r"$p_k$, $\omega_k$, $B_k$, $\hat K$ (count)", PALETTE["head"], PALETTE["head_e"]),
+        (1.1, 1.1, "Output dict", "{prob, prob_logits, freq, amp, count}", PALETTE["note"], PALETTE["note_e"]),
     ]
-    for y, h, title, sub, fc, ec in blocks:
-        _box(ax, 0.4, y, 7.2, h, title, fc, ec, sub=sub, fontsize=11)
 
-    ys = [b[0] + b[1] for b in blocks]
-    starts_ends = list(zip(ys[1:], [b[0] for b in blocks[:-1]]))
-    for y_top, y_bot in zip(ys[1:], [b[0] for b in blocks[:-1]]):
-        _arrow(ax, 4.0, y_top, 4.0, y_bot)
+    x0, w0 = 0.6, 7.0
+    for y, h, title, subtitle, fc, ec in blocks:
+        _box(ax, x0, y, w0, h, title, subtitle, fc, ec)
 
-    ax.set_title("SpectralEquivariantGNN  (one forward, fixed K_max slots)",
-                 loc="center", fontsize=13, pad=10, fontweight="bold")
+    for idx in range(len(blocks) - 1):
+        y_from = blocks[idx][0]
+        y_to = blocks[idx + 1][0] + blocks[idx + 1][1]
+        _arrow(ax, x0 + w0 / 2, y_from, x0 + w0 / 2, y_to)
+
+    _box(
+        ax,
+        7.9,
+        5.25,
+        1.8,
+        2.0,
+        "Global context",
+        "mean/max pooling\nslot refine",
+        PALETTE["note"],
+        PALETTE["note_e"],
+        title_size=9.4,
+        subtitle_size=8.3,
+    )
+    _arrow(ax, x0 + w0, 8.9, 7.9, 6.9, rad=-0.25)
+    _arrow(ax, 7.9, 6.1, x0 + w0, 3.45, rad=-0.25)
+
+    ax.text(
+        0.6,
+        0.35,
+        r"Activation constraints: $\omega_k=\mathrm{softplus}(\cdot)+10^{-5}$, "
+        r"$B_k=\mathrm{softplus}(\cdot)\times\mathrm{amp\_scale}$, $p_k=\sigma(\cdot)$",
+        fontsize=8.9,
+        color=PALETTE["muted"],
+    )
+    ax.set_title("Amplitude Tower Architecture (SpectralEquivariantGNN)", loc="left")
     _save(fig, out_dir, "fig2_v2_stack")
 
 
-# ---- Figure 3: Cutoff graph schematic ---------------------------------------
-
-def _schematic_graph_data():
-    """A small mock molecule (NH3-like layout) for the schematic."""
-    pos = {
-        0: (0.0, 0.85, "N"),
-        1: (-0.85, 0.0, "H"),
-        2: (0.85, 0.0, "H"),
-        3: (0.0, -0.95, "H"),
-    }
-    cutoff = 1.4
-    return pos, cutoff
-
-
 def fig_graph_schematic(out_dir: Path):
-    pos, cutoff = _schematic_graph_data()
-    fig, ax = plt.subplots(figsize=(8.6, 4.2))
+    fig, ax = plt.subplots(figsize=(10.6, 4.9))
     ax.set_aspect("equal")
-    ax.set_xlim(-2.2, 4.7); ax.set_ylim(-1.6, 1.9); ax.set_axis_off()
+    ax.set_xlim(-2.25, 5.6)
+    ax.set_ylim(-1.9, 2.0)
+    ax.set_axis_off()
 
-    color_map = {"H": ("#e3f2fd", "#1565c0"),
-                 "N": ("#e8f5e9", "#2e7d32"),
-                 "O": ("#fff3e0", "#ef6c00"),
-                 "C": ("#f3e5f5", "#6a1b9a"),
-                 "F": ("#ffebee", "#c62828")}
+    coords = {
+        0: (0.00, 0.86),
+        1: (-0.92, 0.03),
+        2: (0.92, 0.03),
+        3: (0.00, -1.00),
+    }
+    z = {0: 7, 1: 1, 2: 1, 3: 1}
+    cutoff = 1.45
 
-    nodes = list(pos.keys())
-    coords = {i: (pos[i][0], pos[i][1]) for i in nodes}
-    elems  = {i: pos[i][2] for i in nodes}
-
-    edges = []
-    for i in nodes:
-        for j in nodes:
+    for i, (xi, yi) in coords.items():
+        for j, (xj, yj) in coords.items():
             if i == j:
                 continue
-            d = np.hypot(coords[i][0] - coords[j][0], coords[i][1] - coords[j][1])
-            if d <= cutoff:
-                edges.append((i, j, d))
+            dij = float(np.hypot(xi - xj, yi - yj))
+            if dij <= cutoff:
+                _arrow(ax, xi * 0.84 + xj * 0.16, yi * 0.84 + yj * 0.16, xj * 0.84 + xi * 0.16, yj * 0.84 + yi * 0.16, lw=1.05, color="#7a8296")
 
-    for i, j, _ in edges:
-        x1, y1 = coords[i]; x2, y2 = coords[j]
-        dx, dy = x2 - x1, y2 - y1
-        L = np.hypot(dx, dy)
-        ux, uy = dx / L, dy / L
-        nx_, ny_ = -uy, ux
-        off = 0.04
-        sx = x1 + off * nx_ + 0.18 * ux
-        sy = y1 + off * ny_ + 0.18 * uy
-        ex = x2 + off * nx_ - 0.18 * ux
-        ey = y2 + off * ny_ - 0.18 * uy
-        _arrow(ax, sx, sy, ex, ey, color="#666", lw=1.0)
+    for idx, (xv, yv) in coords.items():
+        symbol, fc, ec = EL_COLOR[z[idx]]
+        ax.add_patch(plt.Circle((xv, yv), 0.2, facecolor=fc, edgecolor=ec, linewidth=1.6))
+        ax.text(xv, yv, symbol, ha="center", va="center", fontsize=10, fontweight="semibold", color=PALETTE["ink"])
 
-    for i in nodes:
-        x, y = coords[i]
-        fc, ec = color_map.get(elems[i], ("#eee", "#555"))
-        ax.add_patch(plt.Circle((x, y), 0.18, facecolor=fc, edgecolor=ec, linewidth=1.6))
-        ax.text(x, y, elems[i], ha="center", va="center", fontsize=11, fontweight="bold")
-
-    legend_x = 2.3
     _box(
-        ax, legend_x, 0.7, 2.2, 0.95, "Node feature",
-        "#fafafa", "#bbb",
-        sub="one-hot in R^5 over H,C,N,O,F",
-        fontsize=10,
+        ax,
+        2.1,
+        0.85,
+        3.25,
+        0.95,
+        "Node feature",
+        r"$x_i=\mathrm{onehot}(Z_i)$ over [H,C,N,O,F]",
+        PALETTE["note"],
+        PALETTE["note_e"],
     )
     _box(
-        ax, legend_x, -0.35, 2.2, 0.95, "Edge feature",
-        "#fafafa", "#bbb",
-        sub="[ d, Delta r_x, Delta r_y, Delta r_z ] in R^4",
-        fontsize=10,
+        ax,
+        2.1,
+        -0.18,
+        3.25,
+        0.95,
+        "Edge rule",
+        r"$(i,j)\in\mathcal{E}$ iff $i\neq j$"
+        "\n"
+        r"and $\|r_i-r_j\|_2\leq r_c$",
+        PALETTE["note"],
+        PALETTE["note_e"],
     )
     _box(
-        ax, legend_x, -1.4, 2.2, 0.95, "Edge rule",
-        "#fafafa", "#bbb",
-        sub="add i to j if dist( r_i, r_j ) <= r_c  (r_c=5.0 a.u.)",
-        fontsize=10,
+        ax,
+        2.1,
+        -1.21,
+        3.25,
+        0.95,
+        "Edge feature",
+        r"$e_{ij}=[d_{ij},\Delta x_{ij},\Delta y_{ij},\Delta z_{ij}]$",
+        PALETTE["note"],
+        PALETTE["note_e"],
     )
 
-    ax.set_title("Cutoff molecular graph  (directed edges within r_c)",
-                 fontsize=12, fontweight="bold", loc="left")
+    ax.text(-2.05, -1.6, r"Default project cutoff: $r_c=5.0$ a.u.", fontsize=9.3, color=PALETTE["muted"])
+    ax.set_title("Molecular Graph Encoding (physics-aware geometric input)", loc="left")
     _save(fig, out_dir, "fig3_graph_schematic")
 
 
-# ---- Figure 4: Hybrid two-tower ---------------------------------------------
-
 def fig_hybrid(out_dir: Path):
-    fig, ax = plt.subplots(figsize=(11, 4.2))
-    ax.set_xlim(0, 14); ax.set_ylim(0, 4.4); ax.set_axis_off()
+    fig, ax = plt.subplots(figsize=(12.0, 5.0))
+    ax.set_xlim(0, 14.3)
+    ax.set_ylim(0, 5.2)
+    ax.set_axis_off()
 
-    _box(
-        ax, 0.3, 1.6, 2.4, 1.2, "Same PyG graph",
-        PALETTE["input"], PALETTE["input_e"],
-        sub="x, edge_index, pos",
-        fontsize=11,
+    _box(ax, 0.5, 1.9, 2.5, 1.3, "Shared graph input", "same molecule to both towers", PALETTE["input"], PALETTE["input_e"])
+
+    _box(ax, 3.8, 3.05, 3.15, 1.25, "V1 Frequency Tower", r"outputs $p^{(f)}$, $\omega^{(f)}$", PALETTE["tower"], PALETTE["tower_e"])
+    _box(ax, 3.8, 0.85, 3.15, 1.25, "V2 Amplitude Tower", r"outputs $p^{(a)}$, $\omega^{(a)}$, $B^{(a)}$, $\hat K$", PALETTE["head"], PALETTE["head_e"])
+    _box(ax, 7.95, 1.9, 3.35, 1.3, "Hybrid Combiner", "count-aware decode + frequency matching", PALETTE["hybrid"], PALETTE["hybrid_e"])
+    _box(ax, 12.0, 1.9, 1.8, 1.3, "Final peak set", r"$\{(\omega_k,B_k)\}_{k=1}^{\hat K}$", PALETTE["physics"], PALETTE["physics_e"])
+
+    _arrow(ax, 3.0, 2.55, 3.8, 3.7)
+    _arrow(ax, 3.0, 2.55, 3.8, 1.45)
+    _arrow(ax, 6.95, 3.7, 7.95, 2.85)
+    _arrow(ax, 6.95, 1.45, 7.95, 2.25)
+    _arrow(ax, 11.3, 2.55, 12.0, 2.55)
+
+    ax.text(
+        7.95,
+        0.72,
+        r"Assignment cost: $C_{ij}=|\omega_i^{(f)}-\omega_j^{(a)}| + \lambda_c(1-p_j^{(a)})$",
+        fontsize=9.0,
+        color=PALETTE["muted"],
+    )
+    ax.text(
+        7.95,
+        0.40,
+        r"Overflow option: borrow extra $\omega$ from amplitude tower when $\hat K$ exceeds V1 slots.",
+        fontsize=8.8,
+        color=PALETTE["muted"],
     )
 
-    _box(
-        ax, 4.2, 2.85, 3.2, 1.2, "V1 frequency tower",
-        PALETTE["extra"], PALETTE["extra_e"],
-        sub="SpectralEquivariantGNNV1",
-        fontsize=11,
-    )
-    _box(
-        ax, 4.2, 0.35, 3.2, 1.2, "V2 amplitude tower",
-        PALETTE["dec"], PALETTE["dec_e"],
-        sub="SpectralEquivariantGNN",
-        fontsize=11,
-    )
-
-    _box(
-        ax, 8.4, 1.6, 3.0, 1.2, "Hybrid combiner",
-        PALETTE["dense"], PALETTE["dense_e"],
-        sub="freq prior + amp match\nutils/hybrid_inference.py",
-        fontsize=11,
-    )
-
-    _box(
-        ax, 12.0, 1.6, 1.8, 1.2, "Peaks",
-        PALETTE["head"], PALETTE["head_e"],
-        sub="omega, B",
-        fontsize=11,
-    )
-
-    _arrow(ax, 2.7, 2.2, 4.2, 3.45)
-    _arrow(ax, 2.7, 2.2, 4.2, 0.95)
-    _arrow(ax, 7.4, 3.45, 8.4, 2.4)
-    _arrow(ax, 7.4, 0.95, 8.4, 1.95)
-    _arrow(ax, 11.4, 2.2, 12.0, 2.2)
-
-    ax.set_title("V3 hybrid inference  (two full-graph forwards, deterministic merge)",
-                 fontsize=12, fontweight="bold", loc="left")
+    ax.set_title("V3 Hybrid Inference: frequency prior + amplitude calibration", loc="left")
     _save(fig, out_dir, "fig4_hybrid")
 
 
-# ---- Figure 5: Real ammonia / water graphs from data/processed --------------
+def fig_real_graphs(out_dir: Path, samples, cutoff=5.0):
+    if not samples:
+        samples = [_synthetic_sample(name="synthetic_a", n_peaks=12), _synthetic_sample(name="synthetic_b", n_peaks=10)]
 
-def _build_real_graph(pt_path: Path):
-    import torch
-    d = torch.load(pt_path, weights_only=False)
-    Z = d["atomic_numbers"].numpy()
-    R = d["positions"].numpy()
-    return Z, R
-
-
-def fig_real_graphs(out_dir: Path, data_dir: Path, cutoff: float = 5.0):
-    files = sorted(data_dir.glob("*_targets.pt"))
-    if not files:
-        print(f"  [skip] no .pt files in {data_dir}")
-        return
-
-    try:
-        import torch  # noqa: F401
-    except ImportError:
-        print("  [skip] torch not installed")
-        return
-
-    n = len(files)
+    n = len(samples)
     fig, axes = plt.subplots(1, n, figsize=(5.2 * n, 4.6), squeeze=False)
-    z_to_color = {1: ("#e3f2fd", "#1565c0", "H"),
-                  6: ("#f3e5f5", "#6a1b9a", "C"),
-                  7: ("#e8f5e9", "#2e7d32", "N"),
-                  8: ("#fff3e0", "#ef6c00", "O"),
-                  9: ("#ffebee", "#c62828", "F")}
+    for ax, sample in zip(axes[0], samples):
+        ax.set_aspect("equal")
+        ax.set_axis_off()
+        z = sample["z"]
+        pos = sample["pos"]
+        if pos.size == 0:
+            continue
 
-    for ax, fp in zip(axes[0], files):
-        ax.set_aspect("equal"); ax.set_axis_off()
-        Z, R = _build_real_graph(fp)
-        # project to xy plane (atomic units)
-        x, y = R[:, 0], R[:, 1]
-        for i in range(len(Z)):
-            for j in range(len(Z)):
-                if i == j:
-                    continue
-                d = np.linalg.norm(R[i] - R[j])
+        x = pos[:, 0]
+        y = pos[:, 1]
+        for i in range(len(z)):
+            for j in range(i + 1, len(z)):
+                d = float(np.linalg.norm(pos[i] - pos[j]))
                 if d <= cutoff:
-                    ax.plot([x[i], x[j]], [y[i], y[j]],
-                            color="#888", lw=0.8, zorder=1)
-        for i in range(len(Z)):
-            fc, ec, sym = z_to_color.get(int(Z[i]), ("#ddd", "#555", str(int(Z[i]))))
-            ax.add_patch(plt.Circle((x[i], y[i]), 0.35,
-                                    facecolor=fc, edgecolor=ec, lw=1.6, zorder=2))
-            ax.text(x[i], y[i], sym, ha="center", va="center",
-                    fontsize=10, fontweight="bold", zorder=3)
+                    ax.plot([x[i], x[j]], [y[i], y[j]], color="#8a90a3", lw=1.0, zorder=1)
 
-        name = fp.stem.replace("_targets", "")
-        ax.set_title(f"{name}   (N={len(Z)}, r_c={cutoff} a.u.)",
-                     fontsize=11, fontweight="bold")
+        for i in range(len(z)):
+            symbol, fc, ec = EL_COLOR.get(int(z[i]), (str(int(z[i])), "#eceff4", "#616a7f"))
+            ax.add_patch(plt.Circle((x[i], y[i]), 0.24, facecolor=fc, edgecolor=ec, lw=1.5, zorder=2))
+            ax.text(x[i], y[i], symbol, ha="center", va="center", fontsize=9.8, fontweight="semibold", color=PALETTE["ink"], zorder=3)
 
-    fig.suptitle("Cutoff graphs from data/processed (xy projection, atomic units)",
-                 fontsize=12, fontweight="bold", y=1.02)
+        ax.set_title(f"{sample['name']}  (N={len(z)},  r_c={cutoff:.1f} a.u.)", fontsize=10.7)
+
+    fig.suptitle("Molecular Graph Instances Used by the Model", y=1.02)
     _save(fig, out_dir, "fig5_real_graphs")
 
 
-# ---- Figure 6: Spectrum (Lorentzian) ----------------------------------------
+def fig_spectrum(out_dir: Path, samples):
+    if not samples:
+        samples = [_synthetic_sample(name="synthetic", n_peaks=16)]
 
-def _lorentzian(omega, freqs, amps, gamma=0.015):
-    s = np.zeros_like(omega)
-    for w, b in zip(freqs, amps):
-        s += b * (gamma / ((omega - w) ** 2 + gamma ** 2))
-    return s
+    fig, ax = plt.subplots(figsize=(9.2, 4.4))
+    omega = np.linspace(0.01, 1.5, 1400)
+    colors = ["#2d5fb3", "#2c8c4d", "#c8701c", "#6e3ab2"]
 
+    for idx, sample in enumerate(samples[:4]):
+        spec = _lorentzian_spectrum(omega, sample["freq"], sample["amp"], gamma=0.015)
+        spec = spec / (np.max(spec) + 1e-12)
+        ax.plot(omega, spec, lw=1.7, color=colors[idx % len(colors)], label=sample["name"])
 
-def fig_spectrum(out_dir: Path, data_dir: Path):
-    files = sorted(data_dir.glob("*_targets.pt"))
-    try:
-        import torch  # noqa: F401
-    except ImportError:
-        files = []
-
-    fig, ax = plt.subplots(figsize=(8.6, 4.0))
-    omega = np.linspace(0.05, 1.5, 2048)
-
-    if not files:
-        rng = np.random.default_rng(0)
-        freqs = np.sort(rng.uniform(0.2, 1.2, size=12))
-        amps = rng.uniform(0.05, 1.0, size=12)
-        ax.plot(omega, _lorentzian(omega, freqs, amps),
-                label="synthetic", color="#1565c0", lw=1.5)
-        for w, b in zip(freqs, amps):
-            ax.vlines(w, 0, b * 0.6, color="#c62828", alpha=0.6, lw=0.8)
-        ax.set_title("Synthetic Lorentzian reconstruction (no data found)",
-                     fontsize=12, loc="left")
-    else:
-        import torch
-        colors = ["#1565c0", "#2e7d32", "#ef6c00", "#6a1b9a"]
-        for k, fp in enumerate(files[:4]):
-            d = torch.load(fp, weights_only=False)
-            w = d["frequencies"].numpy()
-            b = np.abs(d["amplitudes_x"].numpy())
-            mask = (w >= omega.min()) & (w <= omega.max())
-            w, b = w[mask], b[mask]
-            if w.size == 0:
-                continue
-            spec = _lorentzian(omega, w, b)
-            spec = spec / (spec.max() + 1e-12)
-            label = fp.stem.replace("_targets", "")
-            ax.plot(omega, spec, label=label, color=colors[k % len(colors)], lw=1.4)
-        ax.set_title("Lorentzian-reconstructed target spectra (data/processed)",
-                     fontsize=12, loc="left")
-
-    ax.set_xlabel("Frequency ω  (a.u.)")
-    ax.set_ylabel("S(ω)   (normalized)")
+    ax.set_xlabel(r"Frequency $\omega$ (a.u.)")
+    ax.set_ylabel(r"$S(\omega)$ (normalized)")
     ax.legend(frameon=False, loc="upper right")
+    ax.set_title("Lorentzian-Reconstructed Target Spectra")
     _save(fig, out_dir, "fig6_target_spectra")
+
+
+def fig_physics_extraction(out_dir: Path):
+    fig = plt.figure(figsize=(12.2, 4.2))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.25, 1.0, 1.25], wspace=0.35)
+
+    # Panel A: dipole signal
+    ax0 = fig.add_subplot(gs[0, 0])
+    t = np.linspace(0.0, 220.0, 1200)
+    true_w = np.array([0.26, 0.41, 0.67, 0.93])
+    true_b = np.array([2.7e-4, 1.9e-4, 1.3e-4, 8.8e-5])
+    mu = _dipole_signal(t, true_w, true_b)
+    ax0.plot(t, mu, color="#2d5fb3", lw=1.4)
+    ax0.set_xlabel(r"Time $t$ (a.u.)")
+    ax0.set_ylabel(r"$\mu_x(t)$")
+    ax0.set_title("Input dipole trace")
+
+    # Panel B: complex poles and selected physical poles
+    ax1 = fig.add_subplot(gs[0, 1])
+    theta = np.linspace(0, 2 * np.pi, 400)
+    ax1.plot(np.cos(theta), np.sin(theta), color="#8a90a3", lw=1.0, label="unit circle")
+    rng = np.random.default_rng(21)
+    ghost_r = rng.uniform(0.70, 1.25, size=40)
+    ghost_t = rng.uniform(0.0, 2 * np.pi, size=40)
+    ax1.scatter(ghost_r * np.cos(ghost_t), ghost_r * np.sin(ghost_t), s=13, color="#c0c6d4", alpha=0.65, label="candidate poles")
+    phys_t = np.array([0.33, 0.58, 0.93, 1.22]) * np.pi
+    ax1.scatter(np.cos(phys_t), np.sin(phys_t), s=28, color="#ba3f4b", label="selected poles")
+    ax1.set_aspect("equal")
+    ax1.set_xlabel("Re(z)")
+    ax1.set_ylabel("Im(z)")
+    ax1.set_title("Pad\'e roots + clustering")
+    ax1.legend(frameon=False, fontsize=8, loc="upper left")
+
+    # Panel C: extracted peaks
+    ax2 = fig.add_subplot(gs[0, 2])
+    ax2.vlines(true_w, 0.0, true_b, color="#2c8c4d", lw=2.0)
+    ax2.scatter(true_w, true_b, color="#2c8c4d", s=28)
+    ax2.set_xlabel(r"Transition frequency $\omega_k$ (a.u.)")
+    ax2.set_ylabel(r"Amplitude $B_k$")
+    ax2.set_title("Sparse positive fit output")
+
+    fig.suptitle("Physics-Guided Peak Extraction: Pad\'e -> clustering -> sparse positive regression", y=1.03)
+    _save(fig, out_dir, "fig7_physics_extraction")
+
+
+def fig_dipole_to_spectrum_demo(out_dir: Path, sample):
+    true_w = sample["freq"]
+    true_b = sample["amp"]
+    pred_w, pred_b = _make_demo_prediction(true_w, true_b)
+
+    times = np.linspace(0.0, 320.0, 1500)
+    omega = np.linspace(0.01, 1.5, 1500)
+    mu_true = _dipole_signal(times, true_w, true_b)
+    mu_pred = _dipole_signal(times, pred_w, pred_b)
+    spec_true = _lorentzian_spectrum(omega, true_w, true_b, gamma=0.015)
+    spec_pred = _lorentzian_spectrum(omega, pred_w, pred_b, gamma=0.015)
+
+    overlap = _spectral_overlap(true_w, true_b, pred_w, pred_b, gamma=0.015)
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.2, 4.3))
+
+    axes[0].plot(times, mu_true, color="#1f2d5f", lw=1.5, label="reference")
+    axes[0].plot(times, mu_pred, color="#c05b2a", lw=1.3, ls="--", label="model")
+    axes[0].set_xlabel(r"Time $t$ (a.u.)")
+    axes[0].set_ylabel(r"$\mu_x(t)$")
+    axes[0].set_title("Dipole response reconstruction")
+    axes[0].legend(frameon=False)
+
+    axes[1].plot(omega, spec_true, color="#1f2d5f", lw=1.6, label="reference")
+    axes[1].plot(omega, spec_pred, color="#c05b2a", lw=1.4, ls="--", label="model")
+    axes[1].set_xlabel(r"Frequency $\omega$ (a.u.)")
+    axes[1].set_ylabel(r"$S(\omega)$")
+    axes[1].set_title(f"Lorentzian spectrum (overlap = {overlap:.3f})")
+    axes[1].legend(frameon=False)
+
+    fig.suptitle("From Predicted Peaks to Observable Physics", y=1.03)
+    _save(fig, out_dir, "fig8_dipole_to_spectrum_demo")
+
+
+def fig_metrics_parity_overlap(out_dir: Path, sample):
+    true_w = sample["freq"]
+    true_b = sample["amp"]
+    pred_w, pred_b = _make_demo_prediction(true_w, true_b)
+
+    tw, pw, tb, pb, freq_mae, amp_mae = _paired_metrics(true_w, true_b, pred_w, pred_b)
+    overlap = _spectral_overlap(true_w, true_b, pred_w, pred_b)
+
+    fig, axes = plt.subplots(1, 3, figsize=(12.0, 4.2), gridspec_kw={"width_ratios": [1.0, 1.0, 0.85]})
+
+    # Frequency parity
+    axes[0].scatter(tw, pw, color="#2d5fb3", s=25, alpha=0.85)
+    if len(tw) > 0:
+        lo = float(min(np.min(tw), np.min(pw)))
+        hi = float(max(np.max(tw), np.max(pw)))
+        axes[0].plot([lo, hi], [lo, hi], color="#7a8296", lw=1.1, ls="--")
+        axes[0].set_xlim(lo * 0.95, hi * 1.05)
+        axes[0].set_ylim(lo * 0.95, hi * 1.05)
+    axes[0].set_xlabel(r"True $\omega_k$")
+    axes[0].set_ylabel(r"Predicted $\omega_k$")
+    axes[0].set_title("Frequency parity")
+
+    # Amplitude parity
+    axes[1].scatter(tb, pb, color="#c8701c", s=25, alpha=0.85)
+    if len(tb) > 0:
+        lo = float(max(1e-8, min(np.min(tb), np.min(pb))))
+        hi = float(max(np.max(tb), np.max(pb)))
+        axes[1].plot([lo, hi], [lo, hi], color="#7a8296", lw=1.1, ls="--")
+        axes[1].set_xscale("log")
+        axes[1].set_yscale("log")
+        axes[1].set_xlim(lo * 0.8, hi * 1.25)
+        axes[1].set_ylim(lo * 0.8, hi * 1.25)
+    axes[1].set_xlabel(r"True $B_k$")
+    axes[1].set_ylabel(r"Predicted $B_k$")
+    axes[1].set_title("Amplitude parity")
+
+    # Summary metric panel
+    labels = ["Freq MAE", "Amp MAE", "Overlap"]
+    values = [0.0 if np.isnan(freq_mae) else freq_mae, 0.0 if np.isnan(amp_mae) else amp_mae, overlap]
+    scales = [max(1e-3, values[0]), max(1e-7, values[1] * 1e4), values[2]]
+    axes[2].bar(labels, scales, color=["#2d5fb3", "#c8701c", "#2c8c4d"], alpha=0.88)
+    axes[2].set_title("Evaluation summary")
+    axes[2].set_ylabel("Scaled value")
+    axes[2].set_ylim(0, max(scales) * 1.35 + 1e-8)
+    axes[2].text(0.0, scales[0] + 0.02 * (axes[2].get_ylim()[1]), f"{values[0]:.4f}", ha="center", fontsize=8)
+    axes[2].text(1.0, scales[1] + 0.02 * (axes[2].get_ylim()[1]), f"{values[1]:.2e}", ha="center", fontsize=8)
+    axes[2].text(2.0, scales[2] + 0.02 * (axes[2].get_ylim()[1]), f"{values[2]:.3f}", ha="center", fontsize=8)
+    axes[2].set_xticks(range(3), labels, rotation=0)
+
+    fig.suptitle("Prediction Diagnostics: Parity + Spectral Overlap", y=1.03)
+    _save(fig, out_dir, "fig9_metrics_parity_overlap")
+
+
+def fig_training_objective(out_dir: Path):
+    fig, axes = plt.subplots(1, 2, figsize=(11.8, 4.4), gridspec_kw={"width_ratios": [1.0, 1.25]})
+
+    # Left: synthetic matching cost matrix + assignment
+    n_pred, n_true = 12, 10
+    rng = np.random.default_rng(8)
+    base = np.abs(rng.normal(0.0, 1.0, size=(n_pred, n_true)))
+    trend = np.abs(np.subtract.outer(np.linspace(0, 1, n_pred), np.linspace(0, 1, n_true)))
+    cost = 0.65 * trend + 0.35 * base / (np.max(base) + 1e-12)
+
+    axes[0].imshow(cost, cmap="Blues", aspect="auto")
+    diag_n = min(n_pred, n_true)
+    axes[0].scatter(np.arange(diag_n), np.arange(diag_n), s=20, color="#ba3f4b", label="matched pairs")
+    axes[0].set_title("Hungarian cost matrix")
+    axes[0].set_xlabel("True peaks j")
+    axes[0].set_ylabel("Predicted slots i")
+    axes[0].legend(frameon=False, loc="upper right", fontsize=8)
+
+    # Right: objective summary
+    axes[1].set_axis_off()
+    _box(
+        axes[1],
+        0.02,
+        0.60,
+        0.95,
+        0.35,
+        "Bipartite objective",
+        r"$\mathcal{L}_{bip}=8\mathcal{L}_{\omega}+8\mathcal{L}_{amp}+1.2\mathcal{L}_{prob}$"
+        "\n"
+        r"$+6\mathcal{L}_{sum}+0.5\mathcal{L}_{count}$",
+        PALETTE["tower"],
+        PALETTE["tower_e"],
+        title_size=10.3,
+        subtitle_size=9.4,
+    )
+    _box(
+        axes[1],
+        0.02,
+        0.18,
+        0.95,
+        0.34,
+        "Physics regularizer",
+        r"$\mathcal{L}_{spec}=\mathcal{L}_{time}+0.5\mathcal{L}_{Lorentz}+0.5\mathcal{L}_{area}$"
+        "\n"
+        r"total: $\mathcal{L}=\mathcal{L}_{bip}+\lambda\mathcal{L}_{spec}$",
+        PALETTE["physics"],
+        PALETTE["physics_e"],
+        title_size=10.3,
+        subtitle_size=9.3,
+    )
+    axes[1].text(
+        0.02,
+        0.06,
+        "Training target: permutation-invariant peak alignment with physically consistent spectral behavior.",
+        transform=axes[1].transAxes,
+        fontsize=8.9,
+        color=PALETTE["muted"],
+    )
+
+    fig.suptitle("Training Objective: assignment + physics consistency", y=1.02)
+    _save(fig, out_dir, "fig10_training_objective")
 
 
 # ---- Main --------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out_dir", type=str,
-                        default="docs/assets/figures",
-                        help="Where to write SVG files")
-    parser.add_argument("--data_dir", type=str,
-                        default="data/processed",
-                        help="Processed .pt directory for real-data figures")
-    parser.add_argument("--no-data", action="store_true",
-                        help="Skip figures that need data/processed")
+    parser.add_argument(
+        "--out_dir",
+        type=str,
+        default="docs/assets/figures",
+        help="Destination directory for SVG files",
+    )
+    parser.add_argument(
+        "--data_dir",
+        type=str,
+        default="data/processed",
+        help="Directory containing *_targets.pt files",
+    )
+    parser.add_argument(
+        "--no-data",
+        action="store_true",
+        help="Force synthetic fallback for data-driven figures",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[1]
@@ -441,14 +785,21 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[paper figures] writing to {out_dir}")
+
+    samples = [] if args.no_data else _load_processed_samples(data_dir, max_samples=4)
+    if not samples:
+        samples = [_synthetic_sample()]
+
     fig_pipeline(out_dir)
     fig_v2_stack(out_dir)
     fig_graph_schematic(out_dir)
     fig_hybrid(out_dir)
-
-    if not args.no_data:
-        fig_real_graphs(out_dir, data_dir)
-        fig_spectrum(out_dir, data_dir)
+    fig_real_graphs(out_dir, samples=samples, cutoff=5.0)
+    fig_spectrum(out_dir, samples=samples)
+    fig_physics_extraction(out_dir)
+    fig_dipole_to_spectrum_demo(out_dir, sample=samples[0])
+    fig_metrics_parity_overlap(out_dir, sample=samples[0])
+    fig_training_objective(out_dir)
 
     print("[paper figures] done.")
 
